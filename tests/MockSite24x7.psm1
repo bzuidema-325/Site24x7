@@ -10,11 +10,20 @@ function Start-MockSite24x7 {
     [CmdletBinding()]
     param()
 
-    $port = Get-Random -Minimum 20000 -Maximum 60000
-    $prefix = "http://localhost:$port/"
-    $listener = [System.Net.HttpListener]::new()
-    $listener.Prefixes.Add($prefix)
-    $listener.Start()
+    # Pick a free port; another process can take one between the check and Start, so retry.
+    for ($try = 1; ; $try++) {
+        $port = Get-Random -Minimum 20000 -Maximum 60000
+        $prefix = "http://localhost:$port/"
+        $listener = [System.Net.HttpListener]::new()
+        $listener.Prefixes.Add($prefix)
+        try {
+            $listener.Start()
+            break
+        } catch {
+            $listener.Close()
+            if ($try -ge 10) { throw }
+        }
+    }
 
     $state = [hashtable]::Synchronized(@{
         Listener = $listener
@@ -53,6 +62,8 @@ function Start-MockSite24x7 {
                 $route = @{ Status = 200; Body = '{"code":0,"message":"success","data":{}}' }
             }
 
+            foreach ($h in @($route.Headers.Keys)) { $ctx.Response.Headers[$h] = $route.Headers[$h] }
+
             $bytes = [System.Text.Encoding]::UTF8.GetBytes([string]$route.Body)
             $ctx.Response.StatusCode = $route.Status
             $ctx.Response.ContentType = 'application/json;charset=UTF-8'
@@ -83,11 +94,12 @@ function Set-MockRoute {
         [Parameter(Mandatory)] [string] $Path,
         [object] $Body = @{ code = 0; message = 'success'; data = @{} },
         [int] $Status = 200,
+        [hashtable] $Headers = @{},
         [switch] $Once
     )
     $text = if ($Body -is [string]) { $Body } else { $Body | ConvertTo-Json -Depth 20 -Compress }
     $key = "$($Method.ToUpperInvariant()) $Path"
-    $route = @{ Status = $Status; Body = $text }
+    $route = @{ Status = $Status; Body = $text; Headers = $Headers }
     if ($Once) {
         if (-not $script:State.Queued.ContainsKey($key)) { $script:State.Queued[$key] = [System.Collections.Queue]::Synchronized([System.Collections.Queue]::new()) }
         $script:State.Queued[$key].Enqueue($route)

@@ -7,7 +7,7 @@ namespace Site24x7
     /// Paths marked "verify" could not be checked against the live documentation when this module
     /// was written; the rest come from the documentation or from version 1 of the module.
     /// </summary>
-    public static class Endpoints
+    internal static class Endpoints
     {
         // Monitors
         public const string Monitors = "monitors";

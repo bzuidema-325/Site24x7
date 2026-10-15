@@ -6,11 +6,12 @@ using System.Management.Automation;
 
 namespace Site24x7.Cmdlets
 {
-    /// <summary>Parameter set names shared by the resource cmdlets.</summary>
+    /// <summary>Parameter set names shared by the cmdlets.</summary>
     public static class ParameterSets
     {
         public const string List = "List";
         public const string ById = "ById";
+        public const string ByName = "ByName";
     }
 
     /// <summary>Common shape for a Site24x7 collection such as /monitors or /tags.</summary>
@@ -22,15 +23,15 @@ namespace Site24x7.Cmdlets
         /// <summary>The id of the single resource the cmdlet targets, or null.</summary>
         protected virtual string ResourceId => null;
 
-        /// <summary>The Accept header API version. Most areas use 2.0; monitor groups use 2.1.</summary>
+        /// <summary>The Accept header API version. Most areas use 2.0; monitor groups and threshold profiles use 2.1.</summary>
         protected virtual string ApiVersion => null;
 
-        /// <summary>A readable name for confirmation prompts, for example "monitor group".</summary>
-        protected virtual string ResourceLabel => GetType().Name;
+        /// <summary>A readable name for confirmation prompts and messages, for example "monitor group".</summary>
+        protected abstract string ResourceLabel { get; }
 
         protected string ItemPath => ResourcePath + "/" + Seg(ResourceId);
 
-        /// <summary>"Site24x7.Monitor" for Get-Site24x7Monitor, and so on.</summary>
+        /// <summary>"Site24x7.Monitor" for Get-Site24x7Monitor, and so on: the cmdlet noun is the type name.</summary>
         protected override string OutputTypeName
         {
             get
@@ -75,41 +76,43 @@ namespace Site24x7.Cmdlets
                 return;
             }
 
-            var data = Call("GET", ResourcePath, query: Query, apiVersion: ApiVersion);
-            WriteData(FilterByName(data));
+            WriteData(FilterByName(Call("GET", ResourcePath, query: Query, apiVersion: ApiVersion)));
         }
 
-        protected object FilterByName(object data)
+        protected object[] FilterByName(object data)
         {
-            if (string.IsNullOrEmpty(Name) || !(data is object[] items)) return data;
+            var items = Items(data);
+            if (string.IsNullOrEmpty(Name)) return items.ToArray();
             var pattern = new WildcardPattern(Name, WildcardOptions.IgnoreCase);
             return items.Where(i => pattern.IsMatch(ItemName(i))).ToArray();
         }
 
         private string ItemName(object item)
         {
-            var value = Json.Get(item, NameProperty);
-            if (value == null)
-            {
-                value = FallbackNameProperties.Select(p => Json.Get(item, p)).FirstOrDefault(v => v != null);
-            }
-            return Convert.ToString(value) ?? string.Empty;
+            var value = Json.Get(item, NameProperty)
+                ?? FallbackNameProperties.Select(p => Json.Get(item, p)).FirstOrDefault(v => v != null);
+            return Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty;
         }
     }
 
-    /// <summary>Remove-* cmdlets: DELETE {path}/{id}, with confirmation.</summary>
+    /// <summary>Remove-* cmdlets: DELETE {path}/{id}, with confirmation. They write nothing on success.</summary>
     public abstract class RemoveResourceCmdlet : ResourceCmdlet
     {
         protected override void ProcessRecordCore()
         {
+            var path = ItemPath;
             if (ShouldProcess(ResourceId, "Remove " + ResourceLabel))
             {
-                WriteData(Call("DELETE", ItemPath, apiVersion: ApiVersion));
+                Call("DELETE", path, apiVersion: ApiVersion);
             }
         }
     }
 
-    /// <summary>New-* and Set-* cmdlets build a JSON body from typed parameters plus -Property.</summary>
+    /// <summary>
+    /// New-* and Set-* cmdlets. Both build a JSON body from typed parameters plus -Property;
+    /// New-* POSTs it to the collection and Set-* PUTs it to the item. Which one a cmdlet is
+    /// follows from its verb, so derived classes only declare parameters.
+    /// </summary>
     public abstract class WriteResourceCmdlet : ResourceCmdlet
     {
         /// <summary>
@@ -117,13 +120,27 @@ namespace Site24x7.Cmdlets
         /// @{ check_frequency = '5' }), and they override the typed parameters.
         /// </summary>
         [Parameter]
-        [Alias("Body", "Properties")]
         public Hashtable Property { get; set; }
+
+        /// <summary>True for Set-* cmdlets, false for New-*.</summary>
+        protected bool IsUpdate => (MyInvocation.MyCommand as CmdletInfo)?.Verb == VerbsCommon.Set;
 
         /// <summary>Adds the typed parameters to the body.</summary>
         protected virtual void BuildBody(IDictionary body)
         {
         }
+
+        /// <summary>Throws Site24x7ArgumentException when the body is not one the API can accept.</summary>
+        protected virtual void ValidateBody(IDictionary body)
+        {
+            if (IsUpdate && body.Count == 0)
+            {
+                throw new Site24x7ArgumentException($"Nothing to update on the {ResourceLabel}. Pass at least one setting, or -Property.");
+            }
+        }
+
+        /// <summary>Set-* cmdlets can replace the changes with a complete definition here, as Set-Site24x7Monitor -MergeWithCurrent does.</summary>
+        protected virtual IDictionary PrepareUpdate(IDictionary changes) => changes;
 
         protected OrderedDictionary CreateBody()
         {
@@ -133,43 +150,45 @@ namespace Site24x7.Cmdlets
             return body;
         }
 
-        protected static string Describe(IDictionary body, string fallback)
-        {
-            foreach (var key in new[] { "display_name", "profile_name", "name", "tag_name", "template_name", "label" })
-            {
-                if (body.Contains(key) && body[key] != null) return Convert.ToString(body[key]);
-            }
-            return fallback;
-        }
-    }
+        /// <summary>True when the caller set the field, with a typed parameter or in -Property.</summary>
+        protected bool HasField(IDictionary body, string field) => body.Contains(field) || (Property != null && Property.ContainsKey(field));
 
-    /// <summary>POST {path}</summary>
-    public abstract class NewResourceCmdlet : WriteResourceCmdlet
-    {
+        /// <summary>Sets a field to a default when the caller did not supply it in any form.</summary>
+        protected void Default(IDictionary body, string field, object value)
+        {
+            if (!HasField(body, field)) body[field] = value;
+        }
+
+        // The body depends only on command-line parameters, so it is checked once, before any pipeline input.
+        protected override void BeginProcessingCore() => ValidateBody(CreateBody());
+
         protected override void ProcessRecordCore()
         {
-            var body = CreateBody();
-            if (ShouldProcess(Describe(body, ResourceLabel), "Create " + ResourceLabel))
+            if (IsUpdate)
             {
-                WriteData(Call("POST", ResourcePath, body, apiVersion: ApiVersion));
+                var path = ItemPath;
+                if (ShouldProcess(ResourceId, "Update " + ResourceLabel))
+                {
+                    WriteData(Call("PUT", path, PrepareUpdate(CreateBody()), apiVersion: ApiVersion));
+                }
+            }
+            else
+            {
+                var body = CreateBody();
+                if (ShouldProcess(Describe(body), "Create " + ResourceLabel))
+                {
+                    WriteData(Call("POST", ResourcePath, body, apiVersion: ApiVersion));
+                }
             }
         }
-    }
 
-    /// <summary>PUT {path}/{id}. Only the fields you pass are sent.</summary>
-    public abstract class SetResourceCmdlet : WriteResourceCmdlet
-    {
-        protected override void ProcessRecordCore()
+        private string Describe(IDictionary body)
         {
-            var body = CreateBody();
-            if (body.Count == 0)
+            foreach (var key in new[] { "display_name", "profile_name", "name", "tag_name", "template_name", "credential_name", "action_name", "schedule_name", "label" })
             {
-                throw new Site24x7Exception($"Nothing to update on {ResourceLabel} {ResourceId}. Pass at least one setting or -Property.");
+                if (body.Contains(key) && body[key] != null) return Convert.ToString(body[key], System.Globalization.CultureInfo.InvariantCulture);
             }
-            if (ShouldProcess(ResourceId, "Update " + ResourceLabel))
-            {
-                WriteData(Call("PUT", ItemPath, body, apiVersion: ApiVersion));
-            }
+            return ResourceLabel;
         }
     }
 }

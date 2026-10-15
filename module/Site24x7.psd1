@@ -56,7 +56,6 @@
         'Get-Site24x7User'
         'Get-Site24x7UserGroup'
         'Get-Site24x7WebToken'
-        'Initialize-ZohoToken'
         'Invoke-Site24x7Api'
         'New-Site24x7AttributeAlertGroup'
         'New-Site24x7BusinessHours'
@@ -117,8 +116,9 @@
         'Remove-Site24x7User'
         'Remove-Site24x7UserGroup'
         'Remove-Site24x7WebToken'
-        'Request-ZohoAccessToken'
-        'Revoke-ZohoRefreshToken'
+        'Request-Site24x7AccessToken'
+        'Request-Site24x7RefreshToken'
+        'Revoke-Site24x7RefreshToken'
         'Set-Site24x7AttributeAlertGroup'
         'Set-Site24x7BusinessHours'
         'Set-Site24x7ConfigurationRule'
@@ -149,27 +149,13 @@
         'Start-Site24x7Maintenance'
         'Stop-Site24x7Maintenance'
     )
-    AliasesToExport = @(
-        'Get-Site24x7MonitorGroup'
-        'New-Site24x7MonitorGroup'
-        'New-Site24x7ThresholdProfile_Incomplete'
-        'Remove-Site24x7MonitorGroup'
-        'Set-Site24x7MonitorGroup'
-        'Update-Site24x7Group'
-        'Update-Site24x7Group_AddMonitor'
-        'Update-Site24x7Maintenance'
-        'Update-Site24x7Monitor'
-        'Update-Site24x7Subgroup'
-        'Update-Site24x7ThresholdProfile'
-        'Update-Site24x7User'
-        'Update-Site24x7Usergroup'
-    )
+    AliasesToExport = @()
     PrivateData          = @{
         PSData = @{
             Tags         = @('Site24x7', 'Monitoring', 'Zoho', 'API', 'REST')
             LicenseUri   = 'https://github.com/bzuidema-325/Site24x7/blob/main/LICENSE'
             ProjectUri   = 'https://github.com/bzuidema-325/Site24x7'
-            ReleaseNotes = 'Version 2 is a rewrite as a compiled (C#) module. See README.md for changes from version 1.'
+            ReleaseNotes = 'Version 2 is a rewrite as a compiled (C#) module with new cmdlet and parameter names. See README.md.'
         }
     }
 }

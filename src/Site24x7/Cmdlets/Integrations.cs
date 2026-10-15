@@ -1,5 +1,9 @@
+using System;
 using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using System.Management.Automation;
+using System.Management.Automation.Language;
 
 namespace Site24x7.Cmdlets
 {
@@ -9,53 +13,55 @@ namespace Site24x7.Cmdlets
     /// <summary>Settings shared by New-Site24x7Webhook and Set-Site24x7Webhook.</summary>
     public abstract class WebhookWriteCmdlet : WriteResourceCmdlet
     {
+        /// <summary>The integration's name.</summary>
         [Parameter]
         [ValidateNotNullOrEmpty]
         public virtual string Name { get; set; }
 
+        /// <summary>The URL Site24x7 calls.</summary>
         [Parameter]
         [ValidateNotNullOrEmpty]
         public virtual string Url { get; set; }
 
+        /// <summary>The HTTP method. New webhooks default to POST.</summary>
         [Parameter]
-        public MonitorHttpMethod Method { get; set; } = MonitorHttpMethod.Post;
+        public WebhookMethod Method { get; set; }
 
-        /// <summary>Seconds to wait for the webhook to respond.</summary>
+        /// <summary>Seconds to wait for the webhook to respond. New webhooks default to 30.</summary>
         [Parameter]
         [ValidateRange(1, 45)]
         public int Timeout { get; set; }
 
-        /// <summary>Which monitors raise the webhook.</summary>
+        /// <summary>Raise the webhook for every monitor. New webhooks default to this unless -MonitorId, -MonitorGroupId or -TagId is given.</summary>
         [Parameter]
-        [Alias("selection_type")]
-        public SelectionType SelectionType { get; set; }
+        public SwitchParameter AllMonitors { get; set; }
 
-        /// <summary>Monitors, groups or tags for -SelectionType (field name depends on the type; use -Property for others).</summary>
+        /// <summary>Raise the webhook only for these monitors.</summary>
         [Parameter]
-        public string[] Monitors { get; set; }
+        public string[] MonitorId { get; set; }
+
+        /// <summary>Raise the webhook only for the monitors in these groups.</summary>
+        [Parameter]
+        public string[] MonitorGroupId { get; set; }
+
+        /// <summary>Raise the webhook only for monitors with these tags.</summary>
+        [Parameter]
+        public string[] TagId { get; set; }
 
         /// <summary>Send the incident details as parameters.</summary>
         [Parameter]
-        [Alias("send_incident_parameters")]
         public SwitchParameter SendIncidentParameters { get; set; }
 
         /// <summary>Request headers, as @{ 'Header-Name' = 'value' }.</summary>
         [Parameter]
-        [Alias("custom_headers")]
-        public Hashtable CustomHeaders { get; set; }
+        public Hashtable Header { get; set; }
 
         /// <summary>A custom payload to send instead of the default one.</summary>
         [Parameter]
-        [Alias("custom_parameters")]
         public string CustomParameters { get; set; }
 
-        /// <summary>Call the webhook from an on-premise poller.</summary>
+        /// <summary>Call the webhook from this on-premise poller instead of from Site24x7's servers.</summary>
         [Parameter]
-        [Alias("is_poller_webhook")]
-        public SwitchParameter IsPollerWebhook { get; set; }
-
-        [Parameter]
-        [Alias("poller")]
         public string PollerId { get; set; }
 
         protected override string ResourcePath => Endpoints.Webhooks;
@@ -65,30 +71,46 @@ namespace Site24x7.Cmdlets
         {
             AddIfBound(body, "name", nameof(Name), Name);
             AddIfBound(body, "url", nameof(Url), Url);
-            if (IsBound(nameof(Method)) || !IsBound("ServiceId"))
-            {
-                body["method"] = Method == MonitorHttpMethod.Get ? "G" : Method == MonitorHttpMethod.Put ? "PU" : Method == MonitorHttpMethod.Delete ? "D" : "P";
-            }
+            if (IsBound(nameof(Method))) body["method"] = ApiCodes.Of(Method);
             AddIfBound(body, "timeout", nameof(Timeout), Timeout);
-            AddIfBound(body, "selection_type", nameof(SelectionType), SelectionType);
-            AddIfBound(body, "monitors", nameof(Monitors), Monitors);
-            AddIfBound(body, "send_incident_parameters", nameof(SendIncidentParameters), SendIncidentParameters);
-            if (CustomHeaders != null)
+            if (AllMonitors) body["selection_type"] = SelectionType.All;
+            if (IsBound(nameof(MonitorId)))
             {
-                var list = new ArrayList();
-                foreach (DictionaryEntry e in CustomHeaders)
-                {
-                    list.Add(new Hashtable { { "name", e.Key }, { "value", e.Value } });
-                }
-                body["custom_headers"] = list;
+                body["selection_type"] = SelectionType.Monitor;
+                body["monitors"] = MonitorId;
             }
+            if (IsBound(nameof(MonitorGroupId)))
+            {
+                body["selection_type"] = SelectionType.MonitorGroup;
+                body["monitor_groups"] = MonitorGroupId;
+            }
+            if (IsBound(nameof(TagId)))
+            {
+                body["selection_type"] = SelectionType.Tags;
+                body["tags"] = TagId;
+            }
+            AddIfBound(body, "send_incident_parameters", nameof(SendIncidentParameters), SendIncidentParameters);
+            if (Header != null) body["custom_headers"] = ToNameValueList(Header);
             if (IsBound(nameof(CustomParameters)))
             {
                 body["send_custom_parameters"] = true;
                 body["custom_parameters"] = CustomParameters;
             }
-            AddIfBound(body, "is_poller_webhook", nameof(IsPollerWebhook), IsPollerWebhook);
-            AddIfBound(body, "poller", nameof(PollerId), PollerId);
+            if (IsBound(nameof(PollerId)))
+            {
+                body["is_poller_webhook"] = true;
+                body["poller"] = PollerId;
+            }
+        }
+
+        protected override void ValidateBody(IDictionary body)
+        {
+            base.ValidateBody(body);
+            int selections = (AllMonitors ? 1 : 0) + new[] { nameof(MonitorId), nameof(MonitorGroupId), nameof(TagId) }.Count(IsBound);
+            if (selections > 1)
+            {
+                throw new Site24x7ArgumentException("Choose one of -AllMonitors, -MonitorId, -MonitorGroupId or -TagId.");
+            }
         }
     }
 
@@ -96,29 +118,28 @@ namespace Site24x7.Cmdlets
     /// <para type="synopsis">Creates a webhook integration.</para>
     /// </summary>
     /// <example>
-    /// <code>New-Site24x7Webhook -Name 'Ops bot' -Url https://hooks.example.com/site24x7 -SelectionType All -SendIncidentParameters</code>
+    /// <code>New-Site24x7Webhook 'Ops bot' https://hooks.example.com/site24x7 -SendIncidentParameters</code>
     /// </example>
     [Cmdlet(VerbsCommon.New, "Site24x7Webhook", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7WebhookCommand : WebhookWriteCmdlet
     {
+        /// <summary>The integration's name.</summary>
         [Parameter(Mandatory = true, Position = 0)]
         [ValidateNotNullOrEmpty]
         public override string Name { get; set; }
 
+        /// <summary>The URL Site24x7 calls.</summary>
         [Parameter(Mandatory = true, Position = 1)]
         [ValidateNotNullOrEmpty]
         public override string Url { get; set; }
 
-        protected override void ProcessRecordCore()
+        protected override void BuildBody(IDictionary body)
         {
-            var body = CreateBody();
-            if (!body.Contains("timeout")) body["timeout"] = 30;
-            if (!body.Contains("selection_type")) body["selection_type"] = SelectionType.All;
-            if (ShouldProcess(Name, "Create webhook"))
-            {
-                WriteData(Call("POST", ResourcePath, body));
-            }
+            base.BuildBody(body);
+            Default(body, "method", ApiCodes.Of(WebhookMethod.Post));
+            Default(body, "timeout", 30);
+            Default(body, "selection_type", SelectionType.All);
         }
     }
 
@@ -129,35 +150,19 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class SetSite24x7WebhookCommand : WebhookWriteCmdlet
     {
+        /// <summary>The integration's id.</summary>
         [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("service_id", "Id")]
+        [Alias("service_id")]
         [ValidateNotNullOrEmpty]
         public string ServiceId { get; set; }
 
         protected override string ResourceId => ServiceId;
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (body.Count == 0) throw new Site24x7Exception($"Nothing to update on webhook {ServiceId}.");
-            if (ShouldProcess(ServiceId, "Update webhook"))
-            {
-                WriteData(Call("PUT", ItemPath, body));
-            }
-        }
     }
 
-    /// <summary>
-    /// <para type="synopsis">Creates any third-party integration (Slack, PagerDuty, Microsoft Teams, Opsgenie, ServiceNow and others).</para>
-    /// <para type="description">-Type is the integration's path segment under /integration in the Site24x7 API documentation, for example slack, pager_duty, opsgenie or servicenow. Pass the integration's fields in -Property.</para>
-    /// </summary>
-    /// <example>
-    /// <code>New-Site24x7Integration -Type slack -Property @{ name = 'Ops channel'; url = $slackHookUrl; selection_type = 0 }</code>
-    /// </example>
-    [Cmdlet(VerbsCommon.New, "Site24x7Integration", SupportsShouldProcess = true)]
-    [OutputType(typeof(PSObject))]
-    public sealed class NewSite24x7IntegrationCommand : WriteResourceCmdlet
+    /// <summary>The -Type, ResourcePath and label shared by New- and Set-Site24x7Integration.</summary>
+    public abstract class IntegrationWriteCmdlet : WriteResourceCmdlet
     {
+        /// <summary>The integration's path segment under /integration in the Site24x7 API documentation, for example slack, pager_duty, opsgenie or servicenow.</summary>
         [Parameter(Mandatory = true, Position = 0)]
         [ValidateNotNullOrEmpty]
         [ArgumentCompleter(typeof(IntegrationTypeCompleter))]
@@ -166,15 +171,26 @@ namespace Site24x7.Cmdlets
         protected override string ResourcePath => Endpoints.IntegrationRoot + "/" + Seg(Type);
         protected override string ResourceLabel => Type + " integration";
 
-        protected override void ProcessRecordCore()
+        protected override void ValidateBody(IDictionary body)
         {
-            var body = CreateBody();
-            if (body.Count == 0) throw new Site24x7Exception("Pass the integration's settings with -Property.");
-            if (ShouldProcess(Describe(body, ResourceLabel), "Create " + ResourceLabel))
+            if (body.Count == 0)
             {
-                WriteData(Call("POST", ResourcePath, body));
+                throw new Site24x7ArgumentException("Pass the integration's settings with -Property.");
             }
         }
+    }
+
+    /// <summary>
+    /// <para type="synopsis">Creates any third-party integration (Slack, PagerDuty, Microsoft Teams, Opsgenie, ServiceNow and others).</para>
+    /// <para type="description">Pass the integration's fields in -Property, using the field names from the Site24x7 API documentation.</para>
+    /// </summary>
+    /// <example>
+    /// <code>New-Site24x7Integration slack -Property @{ name = 'Ops channel'; url = $slackHookUrl; selection_type = 0 }</code>
+    /// </example>
+    [Cmdlet(VerbsCommon.New, "Site24x7Integration", SupportsShouldProcess = true)]
+    [OutputType(typeof(PSObject))]
+    public sealed class NewSite24x7IntegrationCommand : IntegrationWriteCmdlet
+    {
     }
 
     /// <summary>
@@ -182,53 +198,29 @@ namespace Site24x7.Cmdlets
     /// </summary>
     [Cmdlet(VerbsCommon.Set, "Site24x7Integration", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
-    public sealed class SetSite24x7IntegrationCommand : WriteResourceCmdlet
+    public sealed class SetSite24x7IntegrationCommand : IntegrationWriteCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0)]
-        [ValidateNotNullOrEmpty]
-        [ArgumentCompleter(typeof(IntegrationTypeCompleter))]
-        public string Type { get; set; }
-
+        /// <summary>The integration's id.</summary>
         [Parameter(Mandatory = true, Position = 1, ValueFromPipelineByPropertyName = true)]
-        [Alias("service_id", "Id")]
+        [Alias("service_id")]
         [ValidateNotNullOrEmpty]
         public string ServiceId { get; set; }
 
-        protected override string ResourcePath => Endpoints.IntegrationRoot + "/" + Seg(Type);
         protected override string ResourceId => ServiceId;
-        protected override string ResourceLabel => Type + " integration";
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (body.Count == 0) throw new Site24x7Exception("Pass the settings to change with -Property.");
-            if (ShouldProcess(ServiceId, "Update " + ResourceLabel))
-            {
-                WriteData(Call("PUT", ItemPath, body));
-            }
-        }
     }
-}
 
-namespace Site24x7.Cmdlets
-{
     /// <summary>Tab completion for the -Type parameter of the integration cmdlets.</summary>
-    public sealed class IntegrationTypeCompleter : System.Management.Automation.IArgumentCompleter
+    public sealed class IntegrationTypeCompleter : IArgumentCompleter
     {
         private static readonly string[] Types =
             { "slack", "pager_duty", "opsgenie", "servicenow", "ms_teams", "connectwise", "hangouts", "telegram", "moogsoft", "jira", "webhooks" };
 
-        public System.Collections.Generic.IEnumerable<System.Management.Automation.CompletionResult> CompleteArgument(
-            string commandName, string parameterName, string wordToComplete,
-            System.Management.Automation.Language.CommandAst commandAst, System.Collections.IDictionary fakeBoundParameters)
+        public IEnumerable<CompletionResult> CompleteArgument(
+            string commandName, string parameterName, string wordToComplete, CommandAst commandAst, IDictionary fakeBoundParameters)
         {
-            foreach (var t in Types)
-            {
-                if (t.StartsWith(wordToComplete ?? string.Empty, System.StringComparison.OrdinalIgnoreCase))
-                {
-                    yield return new System.Management.Automation.CompletionResult(t);
-                }
-            }
+            return Types
+                .Where(t => t.StartsWith(wordToComplete ?? string.Empty, StringComparison.OrdinalIgnoreCase))
+                .Select(t => new CompletionResult(t));
         }
     }
 }

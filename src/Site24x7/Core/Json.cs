@@ -12,22 +12,41 @@ namespace Site24x7
     /// versions Windows PowerShell 5.1 or PowerShell 7 already have loaded.
     /// Objects are read as PSCustomObject so results behave exactly like ConvertFrom-Json output.
     /// </summary>
-    public static class Json
+    internal static class Json
     {
         #region Writer
 
-        public static string Serialize(object value)
+        /// <summary>The deepest nesting the reader and writer accept. Deeper input would exhaust the stack.</summary>
+        public const int MaxDepth = 100;
+
+        /// <param name="value">A hashtable, PSCustomObject, array or scalar.</param>
+        /// <param name="redactSecrets">Replace the values of password, secret and token fields with "***", for logging.</param>
+        public static string Serialize(object value, bool redactSecrets = false)
         {
             var sb = new StringBuilder();
-            Write(sb, value, 0);
+            Write(sb, value, 0, redactSecrets);
             return sb.ToString();
         }
 
-        private static void Write(StringBuilder sb, object value, int depth)
+        private static bool IsSecretField(string name)
         {
-            if (depth > 100)
+            var n = name.ToLowerInvariant();
+            return n.Contains("password") || n.Contains("secret") || n.Contains("token") || n == "auth_pass";
+        }
+
+        private static void WriteMember(StringBuilder sb, string name, object value, int depth, bool redact)
+        {
+            WriteString(sb, name);
+            sb.Append(':');
+            if (redact && value != null && IsSecretField(name)) WriteString(sb, "***");
+            else Write(sb, value, depth + 1, redact);
+        }
+
+        private static void Write(StringBuilder sb, object value, int depth, bool redact)
+        {
+            if (depth > MaxDepth)
             {
-                throw new InvalidOperationException("The object is nested more than 100 levels deep and cannot be converted to JSON.");
+                throw new Site24x7ArgumentException($"The object is nested more than {MaxDepth} levels deep and cannot be converted to JSON.");
             }
 
             if (value is PSObject pso)
@@ -41,9 +60,7 @@ namespace Site24x7
                         if (!(prop is PSNoteProperty) && !(prop is PSProperty)) continue;
                         if (!first) sb.Append(',');
                         first = false;
-                        WriteString(sb, prop.Name);
-                        sb.Append(':');
-                        Write(sb, prop.Value, depth + 1);
+                        WriteMember(sb, prop.Name, prop.Value, depth, redact);
                     }
                     sb.Append('}');
                     return;
@@ -75,10 +92,10 @@ namespace Site24x7
                     WriteString(sb, dto.ToString("yyyy-MM-dd'T'HH:mm:sszzz", CultureInfo.InvariantCulture));
                     return;
                 case float f:
-                    sb.Append(f.ToString("R", CultureInfo.InvariantCulture));
+                    WriteNumber(sb, f);
                     return;
                 case double d:
-                    sb.Append(d.ToString("R", CultureInfo.InvariantCulture));
+                    WriteNumber(sb, d);
                     return;
                 case decimal m:
                     sb.Append(m.ToString(CultureInfo.InvariantCulture));
@@ -101,9 +118,7 @@ namespace Site24x7
                     {
                         if (!first) sb.Append(',');
                         first = false;
-                        WriteString(sb, Convert.ToString(entry.Key, CultureInfo.InvariantCulture));
-                        sb.Append(':');
-                        Write(sb, entry.Value, depth + 1);
+                        WriteMember(sb, Convert.ToString(entry.Key, CultureInfo.InvariantCulture), entry.Value, depth, redact);
                     }
                     sb.Append('}');
                     return;
@@ -116,7 +131,7 @@ namespace Site24x7
                     {
                         if (!first) sb.Append(',');
                         first = false;
-                        Write(sb, item, depth + 1);
+                        Write(sb, item, depth + 1, redact);
                     }
                     sb.Append(']');
                     return;
@@ -125,6 +140,15 @@ namespace Site24x7
                     WriteString(sb, Convert.ToString(value, CultureInfo.InvariantCulture));
                     return;
             }
+        }
+
+        private static void WriteNumber(StringBuilder sb, double d)
+        {
+            if (double.IsNaN(d) || double.IsInfinity(d))
+            {
+                throw new Site24x7ArgumentException($"{d} cannot be sent as JSON.");
+            }
+            sb.Append(d.ToString("R", CultureInfo.InvariantCulture));
         }
 
         private static void WriteString(StringBuilder sb, string s)
@@ -165,7 +189,7 @@ namespace Site24x7
         {
             if (string.IsNullOrWhiteSpace(text)) return null;
             int pos = 0;
-            var result = ReadValue(text, ref pos);
+            var result = ReadValue(text, ref pos, 0);
             SkipWhitespace(text, ref pos);
             if (pos != text.Length)
             {
@@ -174,15 +198,16 @@ namespace Site24x7
             return result;
         }
 
-        private static object ReadValue(string t, ref int p)
+        private static object ReadValue(string t, ref int p, int depth)
         {
+            if (depth > MaxDepth) throw new FormatException($"JSON is nested more than {MaxDepth} levels deep.");
             SkipWhitespace(t, ref p);
             if (p >= t.Length) throw new FormatException("Unexpected end of JSON.");
             char c = t[p];
             switch (c)
             {
-                case '{': return ReadObject(t, ref p);
-                case '[': return ReadArray(t, ref p);
+                case '{': return ReadObject(t, ref p, depth);
+                case '[': return ReadArray(t, ref p, depth);
                 case '"': return ReadString(t, ref p);
                 case 't': Expect(t, ref p, "true"); return true;
                 case 'f': Expect(t, ref p, "false"); return false;
@@ -193,7 +218,7 @@ namespace Site24x7
             }
         }
 
-        private static PSObject ReadObject(string t, ref int p)
+        private static PSObject ReadObject(string t, ref int p, int depth)
         {
             var obj = new PSObject();
             p++; // {
@@ -211,7 +236,7 @@ namespace Site24x7
                 SkipWhitespace(t, ref p);
                 if (p >= t.Length || t[p] != ':') throw new FormatException($"Expected ':' at position {p} in JSON.");
                 p++;
-                object value = ReadValue(t, ref p);
+                object value = ReadValue(t, ref p, depth + 1);
                 // Later duplicates win, matching ConvertFrom-Json in Windows PowerShell.
                 if (obj.Properties[name] != null) obj.Properties.Remove(name);
                 obj.Properties.Add(new PSNoteProperty(name, value));
@@ -223,7 +248,7 @@ namespace Site24x7
             }
         }
 
-        private static object[] ReadArray(string t, ref int p)
+        private static object[] ReadArray(string t, ref int p, int depth)
         {
             var list = new ArrayList();
             p++; // [
@@ -235,7 +260,7 @@ namespace Site24x7
             }
             while (true)
             {
-                list.Add(ReadValue(t, ref p));
+                list.Add(ReadValue(t, ref p, depth + 1));
                 SkipWhitespace(t, ref p);
                 if (p >= t.Length) throw new FormatException("Unexpected end of JSON.");
                 if (t[p] == ',') { p++; continue; }
@@ -307,7 +332,9 @@ namespace Site24x7
                 if (long.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out long l)) return l;
                 if (decimal.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out decimal big)) return big;
             }
-            return double.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture);
+            // .NET Framework throws on numbers beyond double's range, where .NET Core returns infinity.
+            if (double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out double d) && !double.IsInfinity(d)) return d;
+            throw new FormatException($"The number {s} at position {start} in JSON is out of range.");
         }
 
         private static void Expect(string t, ref int p, string word)

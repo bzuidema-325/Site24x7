@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Globalization;
 using System.Management.Automation;
 
 namespace Site24x7.Cmdlets
@@ -9,8 +10,8 @@ namespace Site24x7.Cmdlets
     /// <summary>Base for the type-specific New-Site24x7*Monitor cmdlets.</summary>
     public abstract class NewTypedMonitorCmdlet : MonitorWriteCmdlet
     {
+        /// <summary>The monitor's name.</summary>
         [Parameter(Mandatory = true, Position = 0)]
-        [Alias("display_name")]
         [ValidateNotNullOrEmpty]
         public override string DisplayName { get; set; }
 
@@ -19,57 +20,35 @@ namespace Site24x7.Cmdlets
         /// <summary>The API's type code for this monitor.</summary>
         protected abstract string MonitorType { get; }
 
+        protected override string ResourceLabel => MonitorType + " monitor";
+
         protected override void BuildBody(IDictionary body)
         {
             body["type"] = MonitorType;
             base.BuildBody(body);
         }
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (ShouldProcess(Describe(body, MonitorType), $"Create {MonitorType} monitor"))
-            {
-                WriteData(Call("POST", ResourcePath, body));
-            }
-        }
-    }
-
-    /// <summary>HTTP verbs as the API encodes them for Website and REST API monitors.</summary>
-    public enum MonitorHttpMethod
-    {
-        Get,
-        Post,
-        Head,
-        Put,
-        Patch,
-        Delete,
     }
 
     /// <summary>Settings shared by the HTTP-based monitors.</summary>
     public abstract class NewHttpMonitorCmdlet : NewTypedMonitorCmdlet
     {
+        /// <summary>The URL to check.</summary>
         [Parameter(Mandatory = true, Position = 1)]
-        [Alias("Url")]
         [ValidateNotNullOrEmpty]
-        public string Website { get; set; }
+        public string Url { get; set; }
 
+        /// <summary>The HTTP method. Defaults to GET.</summary>
         [Parameter]
-        [Alias("http_method")]
         public MonitorHttpMethod HttpMethod { get; set; } = MonitorHttpMethod.Get;
 
         /// <summary>Request headers, as @{ 'Header-Name' = 'value' }.</summary>
         [Parameter]
-        [Alias("custom_headers")]
-        public Hashtable CustomHeaders { get; set; }
+        public Hashtable Header { get; set; }
 
+        /// <summary>User name and password for HTTP authentication.</summary>
         [Parameter]
-        [Alias("auth_user")]
-        public string AuthUser { get; set; }
-
-        [Parameter]
-        [Alias("auth_pass")]
-        public string AuthPassword { get; set; }
+        [Credential]
+        public PSCredential Credential { get; set; }
 
         /// <summary>Raises an alert when the response does not contain this text.</summary>
         [Parameter]
@@ -79,46 +58,36 @@ namespace Site24x7.Cmdlets
         [Parameter]
         public string UnmatchingKeyword { get; set; }
 
+        /// <summary>Match -Keyword and -UnmatchingKeyword case-sensitively.</summary>
         [Parameter]
-        [Alias("match_case")]
         public SwitchParameter MatchCase { get; set; }
 
+        /// <summary>The User-Agent header to send.</summary>
         [Parameter]
-        [Alias("user_agent")]
         public string UserAgent { get; set; }
 
+        /// <summary>Check over IPv6.</summary>
         [Parameter]
-        [Alias("use_ipv6")]
         public SwitchParameter UseIPv6 { get; set; }
 
         protected override void BuildBody(IDictionary body)
         {
             base.BuildBody(body);
-            body["website"] = Website;
-            body["http_method"] = EncodeMethod(HttpMethod);
-            Default(body, "timeout", nameof(Timeout), 30);
-            Default(body, "check_frequency", nameof(CheckFrequency), "5");
-            if (CustomHeaders != null) body["custom_headers"] = ToNameValueList(CustomHeaders);
-            AddIfBound(body, "auth_user", nameof(AuthUser), AuthUser);
-            AddIfBound(body, "auth_pass", nameof(AuthPassword), AuthPassword);
+            body["website"] = Url;
+            body["http_method"] = ApiCodes.Of(HttpMethod);
+            Default(body, "timeout", 30);
+            Default(body, "check_frequency", "5");
+            if (Header != null) body["custom_headers"] = ToNameValueList(Header);
+            if (Credential != null && Credential != PSCredential.Empty)
+            {
+                body["auth_user"] = Credential.UserName;
+                body["auth_pass"] = Credential.GetNetworkCredential().Password;
+            }
             if (IsBound(nameof(Keyword))) body["matching_keyword"] = new Hashtable { { "value", Keyword }, { "severity", 2 } };
             if (IsBound(nameof(UnmatchingKeyword))) body["unmatching_keyword"] = new Hashtable { { "value", UnmatchingKeyword }, { "severity", 2 } };
             AddIfBound(body, "match_case", nameof(MatchCase), MatchCase);
             AddIfBound(body, "user_agent", nameof(UserAgent), UserAgent);
             AddIfBound(body, "use_ipv6", nameof(UseIPv6), UseIPv6);
-        }
-
-        private static string EncodeMethod(MonitorHttpMethod method)
-        {
-            switch (method)
-            {
-                case MonitorHttpMethod.Post: return "P";
-                case MonitorHttpMethod.Head: return "H";
-                case MonitorHttpMethod.Put: return "PU";
-                case MonitorHttpMethod.Patch: return "PA";
-                case MonitorHttpMethod.Delete: return "D";
-                default: return "G";
-            }
         }
     }
 
@@ -127,7 +96,7 @@ namespace Site24x7.Cmdlets
     /// <para type="description">Defaults: GET, 30 second timeout, checked every 5 minutes.</para>
     /// </summary>
     /// <example>
-    /// <code>New-Site24x7WebsiteMonitor 'Home page' https://example.com -LocationProfileId $loc -NotificationProfileId $np -ThresholdProfileId $tp -UserGroupIds $ug</code>
+    /// <code>New-Site24x7WebsiteMonitor 'Home page' https://example.com -LocationProfileId $loc -NotificationProfileId $np -ThresholdProfileId $tp -UserGroupId $ug</code>
     /// </example>
     [Cmdlet(VerbsCommon.New, "Site24x7WebsiteMonitor", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
@@ -145,18 +114,15 @@ namespace Site24x7.Cmdlets
     {
         /// <summary>The request body to send, for example a JSON string.</summary>
         [Parameter]
-        [Alias("request_param")]
         public string RequestBody { get; set; }
 
         /// <summary>The request body format: J (JSON), T (text), X (XML) or F (form).</summary>
         [Parameter]
-        [Alias("request_content_type")]
         [ValidateSet("J", "T", "X", "F")]
         public string RequestContentType { get; set; }
 
         /// <summary>The id of an OAuth provider (see Get-Site24x7OAuthProvider) used to authenticate.</summary>
         [Parameter]
-        [Alias("oauth2_provider")]
         public string OAuthProviderId { get; set; }
 
         protected override string MonitorType => "RESTAPI";
@@ -177,18 +143,19 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7SslMonitorCommand : NewTypedMonitorCmdlet
     {
+        /// <summary>The host whose certificate is checked, for example example.com.</summary>
         [Parameter(Mandatory = true, Position = 1)]
-        [Alias("domain_name")]
         [ValidateNotNullOrEmpty]
         public string DomainName { get; set; }
 
+        /// <summary>The port the certificate is served on. Defaults to 443.</summary>
         [Parameter]
         [ValidateRange(1, 65535)]
         public int Port { get; set; } = 443;
 
         /// <summary>Alert this many days before the certificate expires. Defaults to 30.</summary>
         [Parameter]
-        [Alias("expire_days")]
+        [ValidateRange(1, 365)]
         public int ExpireDays { get; set; } = 30;
 
         protected override string MonitorType => "SSL_CERT";
@@ -199,7 +166,7 @@ namespace Site24x7.Cmdlets
             body["domain_name"] = DomainName;
             body["port"] = Port;
             body["expire_days"] = ExpireDays;
-            Default(body, "timeout", nameof(Timeout), 30);
+            Default(body, "timeout", 30);
         }
     }
 
@@ -210,13 +177,13 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7PingMonitorCommand : NewTypedMonitorCmdlet
     {
+        /// <summary>The host to check.</summary>
         [Parameter(Mandatory = true, Position = 1)]
-        [Alias("host_name")]
         [ValidateNotNullOrEmpty]
         public string HostName { get; set; }
 
+        /// <summary>Check over IPv6.</summary>
         [Parameter]
-        [Alias("use_ipv6")]
         public SwitchParameter UseIPv6 { get; set; }
 
         protected override string MonitorType => "PING";
@@ -225,8 +192,8 @@ namespace Site24x7.Cmdlets
         {
             base.BuildBody(body);
             body["host_name"] = HostName;
-            Default(body, "timeout", nameof(Timeout), 10);
-            Default(body, "check_frequency", nameof(CheckFrequency), "5");
+            Default(body, "timeout", 10);
+            Default(body, "check_frequency", "5");
             AddIfBound(body, "use_ipv6", nameof(UseIPv6), UseIPv6);
         }
     }
@@ -238,17 +205,18 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7PortMonitorCommand : NewTypedMonitorCmdlet
     {
+        /// <summary>The host to check.</summary>
         [Parameter(Mandatory = true, Position = 1)]
-        [Alias("host_name")]
         [ValidateNotNullOrEmpty]
         public string HostName { get; set; }
 
+        /// <summary>The TCP port.</summary>
         [Parameter(Mandatory = true, Position = 2)]
         [ValidateRange(1, 65535)]
         public int Port { get; set; }
 
+        /// <summary>Connect with TLS.</summary>
         [Parameter]
-        [Alias("use_ssl")]
         public SwitchParameter UseSsl { get; set; }
 
         /// <summary>Text to send after connecting.</summary>
@@ -257,7 +225,6 @@ namespace Site24x7.Cmdlets
 
         /// <summary>Alert when the port is open instead of when it is closed.</summary>
         [Parameter]
-        [Alias("invert_port_check")]
         public SwitchParameter InvertPortCheck { get; set; }
 
         protected override string MonitorType => "PORT";
@@ -267,29 +234,12 @@ namespace Site24x7.Cmdlets
             base.BuildBody(body);
             body["host_name"] = HostName;
             body["port"] = Port;
-            Default(body, "timeout", nameof(Timeout), 10);
-            Default(body, "check_frequency", nameof(CheckFrequency), "5");
+            Default(body, "timeout", 10);
+            Default(body, "check_frequency", "5");
             AddIfBound(body, "use_ssl", nameof(UseSsl), UseSsl);
             AddIfBound(body, "command", nameof(Command), Command);
             AddIfBound(body, "invert_port_check", nameof(InvertPortCheck), InvertPortCheck);
         }
-    }
-
-    /// <summary>DNS record types, by their DNS type number.</summary>
-    public enum DnsLookupType
-    {
-        A = 1,
-        NS = 2,
-        CNAME = 5,
-        SOA = 6,
-        PTR = 12,
-        MX = 15,
-        TXT = 16,
-        AAAA = 28,
-        SRV = 33,
-        DS = 43,
-        DNSKEY = 48,
-        CAA = 257,
     }
 
     /// <summary>
@@ -301,22 +251,20 @@ namespace Site24x7.Cmdlets
     {
         /// <summary>The name server to query.</summary>
         [Parameter(Mandatory = true, Position = 1)]
-        [Alias("dns_host")]
         [ValidateNotNullOrEmpty]
         public string DnsHost { get; set; }
 
         /// <summary>The name to look up.</summary>
         [Parameter(Mandatory = true, Position = 2)]
-        [Alias("domain_name")]
         [ValidateNotNullOrEmpty]
         public string DomainName { get; set; }
 
+        /// <summary>The record type to look up. Defaults to A.</summary>
         [Parameter]
-        [Alias("lookup_type")]
         public DnsLookupType LookupType { get; set; } = DnsLookupType.A;
 
+        /// <summary>The name server's port. Defaults to 53.</summary>
         [Parameter]
-        [Alias("dns_port")]
         [ValidateRange(1, 65535)]
         public int DnsPort { get; set; } = 53;
 
@@ -328,9 +276,9 @@ namespace Site24x7.Cmdlets
             body["dns_host"] = DnsHost;
             body["domain_name"] = DomainName;
             body["lookup_type"] = (int)LookupType;
-            body["dns_port"] = DnsPort.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            Default(body, "timeout", nameof(Timeout), 10);
-            Default(body, "check_frequency", nameof(CheckFrequency), "5");
+            body["dns_port"] = DnsPort.ToString(CultureInfo.InvariantCulture);
+            Default(body, "timeout", 10);
+            Default(body, "check_frequency", "5");
         }
     }
 
@@ -343,7 +291,6 @@ namespace Site24x7.Cmdlets
     {
         /// <summary>The unique name used in the monitor's ping URL.</summary>
         [Parameter(Mandatory = true, Position = 1)]
-        [Alias("name_in_ping_url")]
         [ValidateNotNullOrEmpty]
         public string NameInPingUrl { get; set; }
 
@@ -365,18 +312,16 @@ namespace Site24x7.Cmdlets
     {
         /// <summary>The domain to watch, for example example.com.</summary>
         [Parameter(Mandatory = true, Position = 1)]
-        [Alias("host_name", "DomainName")]
         [ValidateNotNullOrEmpty]
-        public string HostName { get; set; }
+        public string DomainName { get; set; }
 
         /// <summary>Alert this many days before the domain expires. Defaults to 30.</summary>
         [Parameter]
-        [Alias("expire_days")]
+        [ValidateRange(1, 365)]
         public int ExpireDays { get; set; } = 30;
 
         /// <summary>A specific WHOIS server to query.</summary>
         [Parameter]
-        [Alias("whois_server")]
         public string WhoisServer { get; set; }
 
         protected override string MonitorType => "DOMAINEXPIRY";
@@ -384,10 +329,10 @@ namespace Site24x7.Cmdlets
         protected override void BuildBody(IDictionary body)
         {
             base.BuildBody(body);
-            body["host_name"] = HostName;
+            body["host_name"] = DomainName;
             body["expire_days"] = ExpireDays;
             AddIfBound(body, "whois_server", nameof(WhoisServer), WhoisServer);
-            Default(body, "timeout", nameof(Timeout), 10);
+            Default(body, "timeout", 10);
         }
     }
 }

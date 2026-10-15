@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using System.Globalization;
 using System.Linq;
 using System.Management.Automation;
 
@@ -11,82 +10,71 @@ namespace Site24x7.Cmdlets
     /// <summary>Settings shared by New-Site24x7Maintenance and Set-Site24x7Maintenance.</summary>
     public abstract class MaintenanceWriteCmdlet : WriteResourceCmdlet
     {
-        protected const string TimePattern = "^([01][0-9]|2[0-3]):[0-5][0-9]$";
-
+        /// <summary>The maintenance window's name.</summary>
         [Parameter]
-        [Alias("display_name")]
         [ValidateNotNullOrEmpty]
         public virtual string DisplayName { get; set; }
 
+        /// <summary>A description of the window.</summary>
         [Parameter]
         public string Description { get; set; }
 
+        /// <summary>How the window repeats. This decides which other settings are needed; see the description.</summary>
         [Parameter]
-        [Alias("maintenance_type")]
         public virtual MaintenanceType MaintenanceType { get; set; }
 
         /// <summary>Daily start time, as hh:mm.</summary>
         [Parameter]
-        [Alias("start_time")]
-        [ValidatePattern(TimePattern)]
+        [ValidatePattern(TimeOfDayPattern)]
         public virtual string StartTime { get; set; }
 
         /// <summary>Daily end time, as hh:mm.</summary>
         [Parameter]
-        [Alias("end_time")]
-        [ValidatePattern(TimePattern)]
+        [ValidatePattern(TimeOfDayPattern)]
         public virtual string EndTime { get; set; }
 
         /// <summary>Start date for a Once window.</summary>
         [Parameter]
-        [Alias("start_date")]
         public DateTime StartDate { get; set; }
 
         /// <summary>End date for a Once window.</summary>
         [Parameter]
-        [Alias("end_date")]
         public DateTime EndDate { get; set; }
 
         /// <summary>Time zone id, for example "America/New_York". Defaults to the account's time zone.</summary>
         [Parameter]
         public string TimeZone { get; set; }
 
-        /// <summary>Monitor ids the window applies to.</summary>
+        /// <summary>The monitors the window applies to.</summary>
         [Parameter]
-        public string[] Monitors { get; set; }
+        public string[] MonitorId { get; set; }
 
-        /// <summary>Monitor group ids the window applies to.</summary>
+        /// <summary>The monitor groups the window applies to.</summary>
         [Parameter]
-        [Alias("monitor_groups")]
-        public string[] MonitorGroups { get; set; }
+        public string[] MonitorGroupId { get; set; }
 
-        /// <summary>Tag ids the window applies to.</summary>
+        /// <summary>The tags whose monitors the window applies to.</summary>
         [Parameter]
-        public string[] Tags { get; set; }
+        public string[] TagId { get; set; }
 
-        /// <summary>With -MonitorGroups, also include monitors in subgroups.</summary>
+        /// <summary>With -MonitorGroupId, also include monitors in subgroups.</summary>
         [Parameter]
-        [Alias("subgroup_monitors")]
         public SwitchParameter SubgroupMonitors { get; set; }
 
         /// <summary>Keep polling during the window (alerts are still suppressed).</summary>
         [Parameter]
-        [Alias("perform_monitoring")]
         public SwitchParameter PerformMonitoring { get; set; }
 
         /// <summary>Weekly windows: the day the window starts.</summary>
         [Parameter]
-        [Alias("start_day")]
         public DayOfWeek StartDay { get; set; }
 
         /// <summary>Weekly windows: the day the window ends.</summary>
         [Parameter]
-        [Alias("end_day")]
         public DayOfWeek EndDay { get; set; }
 
         /// <summary>Weekly windows: repeat every 1 to 4 weeks.</summary>
         [Parameter]
-        [Alias("execute_every")]
         [ValidateRange(1, 4)]
         public int ExecuteEvery { get; set; }
 
@@ -97,49 +85,42 @@ namespace Site24x7.Cmdlets
 
         /// <summary>WeeklyByDay windows: the days the window runs.</summary>
         [Parameter]
-        [Alias("week_days")]
-        public DayOfWeek[] WeekDays { get; set; }
+        public DayOfWeek[] WeekDay { get; set; }
 
         /// <summary>MonthlyByDate windows: the day of the month.</summary>
         [Parameter]
-        [Alias("monthly_start_date")]
         [ValidateRange(1, 31)]
         public int MonthlyStartDate { get; set; }
 
         /// <summary>MonthlyByDay windows: which week of the month.</summary>
         [Parameter]
-        [Alias("start_week")]
         public WeekOfMonth StartWeek { get; set; }
 
         /// <summary>Monthly and yearly windows: repeat every N months.</summary>
         [Parameter]
-        [Alias("start_after")]
         [ValidateRange(1, 25)]
         public int StartAfter { get; set; }
 
         /// <summary>Recurring windows: the first date the schedule applies.</summary>
         [Parameter]
-        [Alias("maintenance_start_on")]
         public DateTime MaintenanceStartOn { get; set; }
 
         /// <summary>Recurring windows: 0 = never ends, 1 = ends after -MaintenanceEndAfterTimes, 2 = ends on -MaintenanceEndOn.</summary>
         [Parameter]
-        [Alias("maintenance_end_type")]
         [ValidateRange(0, 2)]
         public int MaintenanceEndType { get; set; }
 
+        /// <summary>Recurring windows: how many times the window runs before it ends.</summary>
         [Parameter]
-        [Alias("maintenance_end_after_times")]
+        [ValidateRange(1, int.MaxValue)]
         public int MaintenanceEndAfterTimes { get; set; }
 
+        /// <summary>Recurring windows: the date the schedule ends.</summary>
         [Parameter]
-        [Alias("maintenance_end_on")]
         public DateTime MaintenanceEndOn { get; set; }
 
         protected override string ResourcePath => Endpoints.Maintenance;
         protected override string ResourceLabel => "maintenance";
-
-        protected static string Date(DateTime value) => value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
         protected override void BuildBody(IDictionary body)
         {
@@ -148,24 +129,24 @@ namespace Site24x7.Cmdlets
             AddIfBound(body, "maintenance_type", nameof(MaintenanceType), MaintenanceType);
             AddIfBound(body, "start_time", nameof(StartTime), StartTime);
             AddIfBound(body, "end_time", nameof(EndTime), EndTime);
-            AddIfBound(body, "start_date", nameof(StartDate), Date(StartDate));
-            AddIfBound(body, "end_date", nameof(EndDate), Date(EndDate));
+            AddIfBound(body, "start_date", nameof(StartDate), ApiDate(StartDate));
+            AddIfBound(body, "end_date", nameof(EndDate), ApiDate(EndDate));
             AddIfBound(body, "timezone", nameof(TimeZone), TimeZone);
 
-            if (IsBound(nameof(Monitors)))
+            if (IsBound(nameof(MonitorId)))
             {
                 body["selection_type"] = SelectionType.Monitor;
-                body["monitors"] = Monitors;
+                body["monitors"] = MonitorId;
             }
-            if (IsBound(nameof(MonitorGroups)))
+            if (IsBound(nameof(MonitorGroupId)))
             {
                 body["selection_type"] = SelectionType.MonitorGroup;
-                body["monitor_groups"] = MonitorGroups;
+                body["monitor_groups"] = MonitorGroupId;
             }
-            if (IsBound(nameof(Tags)))
+            if (IsBound(nameof(TagId)))
             {
                 body["selection_type"] = SelectionType.Tags;
-                body["tags"] = Tags;
+                body["tags"] = TagId;
             }
 
             AddIfBound(body, "subgroup_monitors", nameof(SubgroupMonitors), SubgroupMonitors);
@@ -174,17 +155,27 @@ namespace Site24x7.Cmdlets
             AddIfBound(body, "end_day", nameof(EndDay), (int)EndDay);
             AddIfBound(body, "execute_every", nameof(ExecuteEvery), ExecuteEvery);
             AddIfBound(body, "duration", nameof(Duration), Duration);
-            if (IsBound(nameof(WeekDays)))
+            if (IsBound(nameof(WeekDay)))
             {
-                body["week_days"] = WeekDays.Select(d => (int)d).Distinct().OrderBy(d => d).ToArray();
+                body["week_days"] = WeekDay.Select(d => (int)d).Distinct().OrderBy(d => d).ToArray();
             }
             AddIfBound(body, "monthly_start_date", nameof(MonthlyStartDate), MonthlyStartDate);
             AddIfBound(body, "start_week", nameof(StartWeek), StartWeek);
             AddIfBound(body, "start_after", nameof(StartAfter), StartAfter);
-            AddIfBound(body, "maintenance_start_on", nameof(MaintenanceStartOn), Date(MaintenanceStartOn));
+            AddIfBound(body, "maintenance_start_on", nameof(MaintenanceStartOn), ApiDate(MaintenanceStartOn));
             AddIfBound(body, "maintenance_end_type", nameof(MaintenanceEndType), MaintenanceEndType);
             AddIfBound(body, "maintenance_end_after_times", nameof(MaintenanceEndAfterTimes), MaintenanceEndAfterTimes);
-            AddIfBound(body, "maintenance_end_on", nameof(MaintenanceEndOn), Date(MaintenanceEndOn));
+            AddIfBound(body, "maintenance_end_on", nameof(MaintenanceEndOn), ApiDate(MaintenanceEndOn));
+        }
+
+        protected override void ValidateBody(IDictionary body)
+        {
+            base.ValidateBody(body);
+            int selections = new[] { nameof(MonitorId), nameof(MonitorGroupId), nameof(TagId) }.Count(IsBound);
+            if (selections > 1)
+            {
+                throw new Site24x7ArgumentException("Choose one of -MonitorId, -MonitorGroupId or -TagId.");
+            }
         }
     }
 
@@ -195,61 +186,51 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7MaintenanceCommand : GetResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("maintenance_id", "Id")]
+        /// <summary>The maintenance window's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("maintenance_id")]
         [ValidateNotNullOrEmpty]
         public string MaintenanceId { get; set; }
 
         protected override string ResourcePath => Endpoints.Maintenance;
         protected override string ResourceId => MaintenanceId;
+        protected override string ResourceLabel => "maintenance";
     }
 
     /// <summary>
     /// <para type="synopsis">Schedules a maintenance window.</para>
-    /// <para type="description">Which other parameters are required depends on -MaintenanceType: Once needs -StartDate and -EndDate; WeeklyByTime needs -StartDay and -EndDay; WeeklyByDay needs -StartDay, -EndDay and -Duration; MonthlyByDate needs -MonthlyStartDate and -Duration; MonthlyByDay needs -StartWeek, -StartDay and -Duration. Choose what it covers with -Monitors, -MonitorGroups or -Tags.</para>
+    /// <para type="description">Which other parameters are required depends on -MaintenanceType: Once needs -StartDate and -EndDate; WeeklyByTime needs -StartDay and -EndDay; WeeklyByDay needs -StartDay, -EndDay and -Duration; MonthlyByDate needs -MonthlyStartDate and -Duration; MonthlyByDay needs -StartWeek, -StartDay and -Duration. Choose what it covers with -MonitorId, -MonitorGroupId or -TagId.</para>
     /// </summary>
     /// <example>
-    /// <code>New-Site24x7Maintenance -DisplayName 'Patch night' -MaintenanceType Once -StartDate 2026-11-01 -EndDate 2026-11-01 -StartTime 22:00 -EndTime 23:30 -MonitorGroups $groupId</code>
+    /// <code>New-Site24x7Maintenance 'Patch night' Once -StartDate 2026-11-01 -EndDate 2026-11-01 -StartTime 22:00 -EndTime 23:30 -MonitorGroupId $groupId</code>
     /// </example>
     [Cmdlet(VerbsCommon.New, "Site24x7Maintenance", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7MaintenanceCommand : MaintenanceWriteCmdlet
     {
+        /// <summary>The maintenance window's name.</summary>
         [Parameter(Mandatory = true, Position = 0)]
-        [Alias("display_name")]
         [ValidateNotNullOrEmpty]
         public override string DisplayName { get; set; }
 
+        /// <summary>How the window repeats. This decides which other settings are needed; see the description.</summary>
         [Parameter(Mandatory = true, Position = 1)]
-        [Alias("maintenance_type")]
         public override MaintenanceType MaintenanceType { get; set; }
 
+        /// <summary>Daily start time, as hh:mm.</summary>
         [Parameter(Mandatory = true)]
-        [Alias("start_time")]
-        [ValidatePattern(TimePattern)]
+        [ValidatePattern(TimeOfDayPattern)]
         public override string StartTime { get; set; }
 
+        /// <summary>Daily end time, as hh:mm.</summary>
         [Parameter(Mandatory = true)]
-        [Alias("end_time")]
-        [ValidatePattern(TimePattern)]
+        [ValidatePattern(TimeOfDayPattern)]
         public override string EndTime { get; set; }
 
-        protected override void ProcessRecordCore()
+        protected override void ValidateBody(IDictionary body)
         {
-            RequireForType();
-            var body = CreateBody();
-            if (!body.Contains("selection_type") && (Property == null || !Property.ContainsKey("selection_type")))
-            {
-                throw new Site24x7Exception("Choose what the maintenance covers with -Monitors, -MonitorGroups or -Tags.");
-            }
-            if (ShouldProcess(Describe(body, ResourceLabel), "Create maintenance"))
-            {
-                WriteData(Call("POST", ResourcePath, body));
-            }
-        }
+            base.ValidateBody(body);
 
-        private void RequireForType()
-        {
             string[] required;
             switch (MaintenanceType)
             {
@@ -264,7 +245,19 @@ namespace Site24x7.Cmdlets
             var missing = required.Where(p => !IsBound(p)).ToArray();
             if (missing.Length > 0)
             {
-                throw new Site24x7Exception($"A {MaintenanceType} maintenance also needs: -{string.Join(", -", missing)}.");
+                throw new Site24x7ArgumentException($"A {MaintenanceType} maintenance also needs: -{string.Join(", -", missing)}.");
+            }
+            if (MaintenanceType == MaintenanceType.Once && EndDate.Date < StartDate.Date)
+            {
+                throw new Site24x7ArgumentException("-EndDate is before -StartDate.");
+            }
+            if (!HasField(body, "selection_type"))
+            {
+                throw new Site24x7ArgumentException("Choose what the maintenance covers with -MonitorId, -MonitorGroupId or -TagId.");
+            }
+            if (IsBound(nameof(SubgroupMonitors)) && !IsBound(nameof(MonitorGroupId)))
+            {
+                throw new Site24x7ArgumentException("-SubgroupMonitors only applies with -MonitorGroupId.");
             }
         }
     }
@@ -273,26 +266,16 @@ namespace Site24x7.Cmdlets
     /// <para type="synopsis">Updates a scheduled maintenance window. Only the settings you pass are sent.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Set, "Site24x7Maintenance", SupportsShouldProcess = true)]
-    [Alias("Update-Site24x7Maintenance")]
     [OutputType(typeof(PSObject))]
     public sealed class SetSite24x7MaintenanceCommand : MaintenanceWriteCmdlet
     {
+        /// <summary>The maintenance window's id.</summary>
         [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("maintenance_id", "Id")]
+        [Alias("maintenance_id")]
         [ValidateNotNullOrEmpty]
         public string MaintenanceId { get; set; }
 
         protected override string ResourceId => MaintenanceId;
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (body.Count == 0) throw new Site24x7Exception($"Nothing to update on maintenance {MaintenanceId}.");
-            if (ShouldProcess(MaintenanceId, "Update maintenance"))
-            {
-                WriteData(Call("PUT", ItemPath, body));
-            }
-        }
     }
 
     /// <summary>
@@ -301,8 +284,9 @@ namespace Site24x7.Cmdlets
     [Cmdlet(VerbsCommon.Remove, "Site24x7Maintenance", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7MaintenanceCommand : RemoveResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("maintenance_id", "Id")]
+        /// <summary>The maintenance window's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("maintenance_id")]
         [ValidateNotNullOrEmpty]
         public string MaintenanceId { get; set; }
 
@@ -314,55 +298,55 @@ namespace Site24x7.Cmdlets
     /// <summary>Selects what Start-/Stop-Site24x7Maintenance acts on, by id or by name.</summary>
     public abstract class MaintenanceNowCmdlet : Site24x7Cmdlet
     {
-        protected const string MonitorsSet = "Monitors";
-        protected const string MonitorNamesSet = "MonitorNames";
-        protected const string GroupsSet = "MonitorGroups";
-        protected const string GroupNamesSet = "MonitorGroupNames";
-        protected const string TagsSet = "Tags";
-        protected const string TagNamesSet = "TagNameValues";
+        protected const string MonitorIdSet = "MonitorId";
+        protected const string MonitorNameSet = "MonitorName";
+        protected const string GroupIdSet = "MonitorGroupId";
+        protected const string GroupNameSet = "MonitorGroupName";
+        protected const string TagIdSet = "TagId";
+        protected const string TagNameSet = "TagNameValue";
 
-        [Parameter(Mandatory = true, ParameterSetName = MonitorsSet)]
-        [Alias("monitor_ids")]
+        /// <summary>Monitors, by id.</summary>
+        [Parameter(Mandatory = true, ParameterSetName = MonitorIdSet)]
         [ValidateNotNullOrEmpty]
-        public string[] Monitors { get; set; }
+        public string[] MonitorId { get; set; }
 
-        [Parameter(Mandatory = true, ParameterSetName = MonitorNamesSet)]
-        [Alias("monitor_names")]
+        /// <summary>Monitors, by name.</summary>
+        [Parameter(Mandatory = true, ParameterSetName = MonitorNameSet)]
         [ValidateNotNullOrEmpty]
-        public string[] MonitorNames { get; set; }
+        public string[] MonitorName { get; set; }
 
-        [Parameter(Mandatory = true, ParameterSetName = GroupsSet)]
-        [Alias("monitor_groups")]
+        /// <summary>Monitor groups, by id.</summary>
+        [Parameter(Mandatory = true, ParameterSetName = GroupIdSet)]
         [ValidateNotNullOrEmpty]
-        public string[] MonitorGroups { get; set; }
+        public string[] MonitorGroupId { get; set; }
 
-        [Parameter(Mandatory = true, ParameterSetName = GroupNamesSet)]
-        [Alias("monitor_group_names")]
+        /// <summary>Monitor groups, by name.</summary>
+        [Parameter(Mandatory = true, ParameterSetName = GroupNameSet)]
         [ValidateNotNullOrEmpty]
-        public string[] MonitorGroupNames { get; set; }
+        public string[] MonitorGroupName { get; set; }
 
-        [Parameter(Mandatory = true, ParameterSetName = TagsSet)]
+        /// <summary>Tags, by id.</summary>
+        [Parameter(Mandatory = true, ParameterSetName = TagIdSet)]
         [ValidateNotNullOrEmpty]
-        public string[] Tags { get; set; }
+        public string[] TagId { get; set; }
 
-        /// <summary>Tags as "name:value" strings.</summary>
-        [Parameter(Mandatory = true, ParameterSetName = TagNamesSet)]
-        [Alias("tag_name_values")]
+        /// <summary>Tags, as "name:value" strings.</summary>
+        [Parameter(Mandatory = true, ParameterSetName = TagNameSet)]
         [ValidateNotNullOrEmpty]
-        public string[] TagNameValues { get; set; }
+        public string[] TagNameValue { get; set; }
 
-        protected bool ByName => ParameterSetName == MonitorNamesSet || ParameterSetName == GroupNamesSet || ParameterSetName == TagNamesSet;
+        protected bool ByName => ParameterSetName == MonitorNameSet || ParameterSetName == GroupNameSet || ParameterSetName == TagNameSet;
 
         protected void AddSelection(IDictionary body)
         {
             switch (ParameterSetName)
             {
-                case MonitorsSet: body["selection_type"] = SelectionType.Monitor; body["monitors"] = Monitors; break;
-                case MonitorNamesSet: body["selection_type"] = SelectionType.Monitor; body["monitor_names"] = MonitorNames; break;
-                case GroupsSet: body["selection_type"] = SelectionType.MonitorGroup; body["monitor_groups"] = MonitorGroups; break;
-                case GroupNamesSet: body["selection_type"] = SelectionType.MonitorGroup; body["monitor_group_names"] = MonitorGroupNames; break;
-                case TagsSet: body["selection_type"] = SelectionType.Tags; body["tags"] = Tags; break;
-                case TagNamesSet: body["selection_type"] = SelectionType.Tags; body["tag_name_values"] = TagNameValues; break;
+                case MonitorIdSet: body["selection_type"] = SelectionType.Monitor; body["monitors"] = MonitorId; break;
+                case MonitorNameSet: body["selection_type"] = SelectionType.Monitor; body["monitor_names"] = MonitorName; break;
+                case GroupIdSet: body["selection_type"] = SelectionType.MonitorGroup; body["monitor_groups"] = MonitorGroupId; break;
+                case GroupNameSet: body["selection_type"] = SelectionType.MonitorGroup; body["monitor_group_names"] = MonitorGroupName; break;
+                case TagIdSet: body["selection_type"] = SelectionType.Tags; body["tags"] = TagId; break;
+                case TagNameSet: body["selection_type"] = SelectionType.Tags; body["tag_name_values"] = TagNameValue; break;
             }
         }
 
@@ -370,7 +354,7 @@ namespace Site24x7.Cmdlets
         {
             get
             {
-                var items = Monitors ?? MonitorNames ?? MonitorGroups ?? MonitorGroupNames ?? Tags ?? TagNameValues;
+                var items = MonitorId ?? MonitorName ?? MonitorGroupId ?? MonitorGroupName ?? TagId ?? TagNameValue;
                 return items == null ? null : string.Join(", ", items);
             }
         }
@@ -380,9 +364,9 @@ namespace Site24x7.Cmdlets
     /// <para type="synopsis">Puts monitors, monitor groups or tagged monitors into maintenance now.</para>
     /// </summary>
     /// <example>
-    /// <code>Start-Site24x7Maintenance -MonitorNames 'web01','web02' -Duration 60 -PerformMonitoring</code>
+    /// <code>Start-Site24x7Maintenance -MonitorName web01, web02 -Duration 60 -PerformMonitoring</code>
     /// </example>
-    [Cmdlet(VerbsLifecycle.Start, "Site24x7Maintenance", SupportsShouldProcess = true, DefaultParameterSetName = MonitorsSet)]
+    [Cmdlet(VerbsLifecycle.Start, "Site24x7Maintenance", SupportsShouldProcess = true, DefaultParameterSetName = MonitorIdSet)]
     [OutputType(typeof(PSObject))]
     public sealed class StartSite24x7MaintenanceCommand : MaintenanceNowCmdlet
     {
@@ -391,14 +375,13 @@ namespace Site24x7.Cmdlets
         [ValidateRange(1, int.MaxValue)]
         public int Duration { get; set; }
 
+        /// <summary>Keep polling during the maintenance (alerts are still suppressed).</summary>
         [Parameter]
-        [Alias("perform_monitoring")]
         public SwitchParameter PerformMonitoring { get; set; }
 
         /// <summary>With monitor groups, also include monitors in subgroups.</summary>
-        [Parameter(ParameterSetName = GroupsSet)]
-        [Parameter(ParameterSetName = GroupNamesSet)]
-        [Alias("subgroup_monitors")]
+        [Parameter(ParameterSetName = GroupIdSet)]
+        [Parameter(ParameterSetName = GroupNameSet)]
         public SwitchParameter SubgroupMonitors { get; set; }
 
         protected override object ErrorTarget => Target;
@@ -427,7 +410,8 @@ namespace Site24x7.Cmdlets
     {
         private const string MaintenanceSet = "MaintenanceId";
 
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = MaintenanceSet, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
+        /// <summary>The maintenance window to end.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = MaintenanceSet, ValueFromPipelineByPropertyName = true)]
         [Alias("maintenance_id")]
         [ValidateNotNullOrEmpty]
         public string MaintenanceId { get; set; }

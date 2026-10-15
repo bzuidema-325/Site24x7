@@ -25,7 +25,7 @@ namespace Site24x7
     /// API and accounts endpoints for every data center, taken from the Site24x7 API documentation
     /// (https://www.site24x7.com/help/api/#introduction and #authentication).
     /// </summary>
-    public static class DataCenterEndpoints
+    internal static class DataCenterEndpoints
     {
         private static readonly Dictionary<Site24x7DataCenter, (string Api, string Accounts)> Map =
             new Dictionary<Site24x7DataCenter, (string, string)>

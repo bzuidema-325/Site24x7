@@ -10,110 +10,101 @@ namespace Site24x7.Cmdlets
     /// <summary>Settings shared by New-Site24x7User and Set-Site24x7User.</summary>
     public abstract class UserWriteCmdlet : WriteResourceCmdlet
     {
-        private const string TimePattern = "^([01][0-9]|2[0-3]):[0-5][0-9]$";
-
+        /// <summary>The user's name.</summary>
         [Parameter]
-        [Alias("display_name")]
         [ValidateNotNullOrEmpty]
         public virtual string DisplayName { get; set; }
 
+        /// <summary>The user's email address. New users are sent an invitation.</summary>
         [Parameter]
-        [Alias("email_address")]
         [ValidateNotNullOrEmpty]
         public virtual string EmailAddress { get; set; }
 
+        /// <summary>The user's Site24x7 role.</summary>
         [Parameter]
-        [Alias("user_role")]
         public UserRole UserRole { get; set; }
 
+        /// <summary>The user's StatusIQ role.</summary>
         [Parameter]
-        [Alias("statusiq_role")]
         public StatusIQRole StatusIQRole { get; set; }
 
+        /// <summary>The user's CloudSpend role.</summary>
         [Parameter]
-        [Alias("cloudspend_role")]
         public CloudSpendRole CloudSpendRole { get; set; }
 
         /// <summary>The channels the user can be alerted through.</summary>
         [Parameter]
-        [Alias("notify_medium")]
         public NotifyMedium[] NotifyMedium { get; set; }
 
+        /// <summary>The user's job title.</summary>
         [Parameter]
-        [Alias("job_title")]
         public JobTitle JobTitle { get; set; }
 
-        /// <summary>User group ids the user belongs to.</summary>
+        /// <summary>The user groups the user belongs to.</summary>
         [Parameter]
-        [Alias("user_groups")]
-        public string[] UserGroups { get; set; }
+        public string[] UserGroupId { get; set; }
 
         /// <summary>Which monitors the user can see (for restricted roles).</summary>
         [Parameter]
-        [Alias("selection_type")]
         public SelectionType SelectionType { get; set; }
 
-        /// <summary>Monitor group ids the user can see when -SelectionType is MonitorGroup.</summary>
+        /// <summary>The monitor groups the user can see when -SelectionType is MonitorGroup.</summary>
         [Parameter]
-        [Alias("monitor_groups")]
-        public string[] MonitorGroups { get; set; }
+        public string[] MonitorGroupId { get; set; }
 
+        /// <summary>Text or HTML alert emails.</summary>
         [Parameter]
-        [Alias("alert_email_format")]
         public AlertEmailFormat AlertEmailFormat { get; set; }
 
         /// <summary>Days on which the user is not alerted.</summary>
         [Parameter]
-        [Alias("alert_day_exclusion")]
         public DayOfWeek[] AlertDayExclusion { get; set; }
 
         /// <summary>Start of the daily alerting window, as hh:mm.</summary>
         [Parameter]
-        [Alias("alert_start_time")]
-        [ValidatePattern(TimePattern)]
+        [ValidatePattern(TimeOfDayPattern)]
         public string AlertStartTime { get; set; }
 
         /// <summary>End of the daily alerting window, as hh:mm.</summary>
         [Parameter]
-        [Alias("alert_end_time")]
-        [ValidatePattern(TimePattern)]
+        [ValidatePattern(TimeOfDayPattern)]
         public string AlertEndTime { get; set; }
 
+        /// <summary>The channels used for down alerts.</summary>
         [Parameter]
-        [Alias("alert_down")]
         public NotifyMedium[] AlertDown { get; set; }
 
+        /// <summary>The channels used for trouble alerts.</summary>
         [Parameter]
-        [Alias("alert_trouble")]
         public NotifyMedium[] AlertTrouble { get; set; }
 
+        /// <summary>The channels used when a monitor is back up.</summary>
         [Parameter]
-        [Alias("alert_up")]
         public NotifyMedium[] AlertUp { get; set; }
 
+        /// <summary>The channels used for AppLogs alerts.</summary>
         [Parameter]
-        [Alias("alert_applogs")]
         public NotifyMedium[] AlertAppLogs { get; set; }
 
+        /// <summary>The channels used for anomaly alerts.</summary>
         [Parameter]
-        [Alias("alert_anomaly")]
         public NotifyMedium[] AlertAnomaly { get; set; }
 
+        /// <summary>The mobile number's country calling code, without +.</summary>
         [Parameter]
-        [Alias("mobile_country_code")]
         [ValidatePattern(@"^\d{1,3}$")]
         public string MobileCountryCode { get; set; }
 
+        /// <summary>The mobile number for SMS and voice alerts.</summary>
         [Parameter]
-        [Alias("mobile_number")]
         public string MobileNumber { get; set; }
 
+        /// <summary>The SMS provider for the mobile number.</summary>
         [Parameter]
-        [Alias("mobile_sms_provider")]
         public SmsProvider MobileSmsProvider { get; set; }
 
+        /// <summary>The voice call provider for the mobile number.</summary>
         [Parameter]
-        [Alias("mobile_call_provider")]
         public CallProvider MobileCallProvider { get; set; }
 
         protected override string ResourcePath => Endpoints.Users;
@@ -128,9 +119,9 @@ namespace Site24x7.Cmdlets
             AddIfBound(body, "cloudspend_role", nameof(CloudSpendRole), CloudSpendRole);
             AddIfBound(body, "notify_medium", nameof(NotifyMedium), Distinct(NotifyMedium));
             AddIfBound(body, "job_title", nameof(JobTitle), JobTitle);
-            AddIfBound(body, "user_groups", nameof(UserGroups), UserGroups);
+            AddIfBound(body, "user_groups", nameof(UserGroupId), UserGroupId);
             AddIfBound(body, "selection_type", nameof(SelectionType), SelectionType);
-            AddIfBound(body, "monitor_groups", nameof(MonitorGroups), MonitorGroups);
+            AddIfBound(body, "monitor_groups", nameof(MonitorGroupId), MonitorGroupId);
 
             var alert = new Hashtable();
             AddIfBound(alert, "email_format", nameof(AlertEmailFormat), AlertEmailFormat);
@@ -170,69 +161,50 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7UserCommand : GetResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("user_id", "Id")]
+        /// <summary>The user's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("user_id")]
         [ValidateNotNullOrEmpty]
         public string UserId { get; set; }
 
         protected override string ResourcePath => Endpoints.Users;
         protected override string ResourceId => UserId;
+        protected override string ResourceLabel => "user";
     }
 
     /// <summary>
     /// <para type="synopsis">Creates (invites) a user.</para>
     /// </summary>
     /// <example>
-    /// <code>New-Site24x7User -DisplayName 'Jo Admin' -EmailAddress jo@example.com -UserRole Administrator -NotifyMedium Email -AlertDown Email -AlertUp Email -UserGroups $ug</code>
+    /// <code>New-Site24x7User -DisplayName 'Jo Admin' -EmailAddress jo@example.com -UserRole Administrator -NotifyMedium Email -AlertDown Email -AlertUp Email -UserGroupId $ug</code>
     /// </example>
     [Cmdlet(VerbsCommon.New, "Site24x7User", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7UserCommand : UserWriteCmdlet
     {
         [Parameter(Mandatory = true)]
-        [Alias("display_name")]
         [ValidateNotNullOrEmpty]
         public override string DisplayName { get; set; }
 
         [Parameter(Mandatory = true)]
-        [Alias("email_address")]
         [ValidateNotNullOrEmpty]
         public override string EmailAddress { get; set; }
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (ShouldProcess(Describe(body, ResourceLabel), "Create user"))
-            {
-                WriteData(Call("POST", ResourcePath, body));
-            }
-        }
     }
 
     /// <summary>
     /// <para type="synopsis">Updates a user. Only the settings you pass are sent.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Set, "Site24x7User", SupportsShouldProcess = true)]
-    [Alias("Update-Site24x7User")]
     [OutputType(typeof(PSObject))]
     public sealed class SetSite24x7UserCommand : UserWriteCmdlet
     {
+        /// <summary>The user's id.</summary>
         [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("user_id", "Id")]
+        [Alias("user_id")]
         [ValidateNotNullOrEmpty]
         public string UserId { get; set; }
 
         protected override string ResourceId => UserId;
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (body.Count == 0) throw new Site24x7Exception($"Nothing to update on user {UserId}.");
-            if (ShouldProcess(UserId, "Update user"))
-            {
-                WriteData(Call("PUT", ItemPath, body));
-            }
-        }
     }
 
     /// <summary>
@@ -241,8 +213,9 @@ namespace Site24x7.Cmdlets
     [Cmdlet(VerbsCommon.Remove, "Site24x7User", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7UserCommand : RemoveResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("user_id", "Id")]
+        /// <summary>The user's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("user_id")]
         [ValidateNotNullOrEmpty]
         public string UserId { get; set; }
 
@@ -256,22 +229,21 @@ namespace Site24x7.Cmdlets
     /// <summary>Settings shared by New-Site24x7UserGroup and Set-Site24x7UserGroup.</summary>
     public abstract class UserGroupWriteCmdlet : WriteResourceCmdlet
     {
+        /// <summary>The group's name.</summary>
         [Parameter]
-        [Alias("display_name")]
         [ValidateNotNullOrEmpty]
         public virtual string DisplayName { get; set; }
 
-        /// <summary>User ids in the group.</summary>
+        /// <summary>The users in the group. Replaces the current members on Set.</summary>
         [Parameter]
-        public string[] Users { get; set; }
+        public string[] UserId { get; set; }
 
         /// <summary>0 = Site24x7, 1 = CloudSpend, 2 = StatusIQ.</summary>
         [Parameter]
-        [Alias("product_id")]
         public int ProductId { get; set; }
 
+        /// <summary>An attribute alert group for the user group. See Get-Site24x7AttributeAlertGroup.</summary>
         [Parameter]
-        [Alias("attribute_group_id")]
         public string AttributeGroupId { get; set; }
 
         protected override string ResourcePath => Endpoints.UserGroups;
@@ -280,7 +252,7 @@ namespace Site24x7.Cmdlets
         protected override void BuildBody(IDictionary body)
         {
             AddIfBound(body, "display_name", nameof(DisplayName), DisplayName);
-            AddIfBound(body, "users", nameof(Users), Users);
+            AddIfBound(body, "users", nameof(UserId), UserId);
             AddIfBound(body, "product_id", nameof(ProductId), ProductId);
             AddIfBound(body, "attribute_group_id", nameof(AttributeGroupId), AttributeGroupId);
         }
@@ -293,13 +265,15 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7UserGroupCommand : GetResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("user_group_id", "Id")]
+        /// <summary>The user group's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("user_group_id")]
         [ValidateNotNullOrEmpty]
         public string UserGroupId { get; set; }
 
         protected override string ResourcePath => Endpoints.UserGroups;
         protected override string ResourceId => UserGroupId;
+        protected override string ResourceLabel => "user group";
     }
 
     /// <summary>
@@ -310,44 +284,24 @@ namespace Site24x7.Cmdlets
     public sealed class NewSite24x7UserGroupCommand : UserGroupWriteCmdlet
     {
         [Parameter(Mandatory = true, Position = 0)]
-        [Alias("display_name")]
         [ValidateNotNullOrEmpty]
         public override string DisplayName { get; set; }
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (ShouldProcess(Describe(body, ResourceLabel), "Create user group"))
-            {
-                WriteData(Call("POST", ResourcePath, body));
-            }
-        }
     }
 
     /// <summary>
     /// <para type="synopsis">Updates a user group. Only the settings you pass are sent.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Set, "Site24x7UserGroup", SupportsShouldProcess = true)]
-    [Alias("Update-Site24x7Usergroup")]
     [OutputType(typeof(PSObject))]
     public sealed class SetSite24x7UserGroupCommand : UserGroupWriteCmdlet
     {
+        /// <summary>The user group's id.</summary>
         [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("user_group_id", "Id")]
+        [Alias("user_group_id")]
         [ValidateNotNullOrEmpty]
         public string UserGroupId { get; set; }
 
         protected override string ResourceId => UserGroupId;
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (body.Count == 0) throw new Site24x7Exception($"Nothing to update on user group {UserGroupId}.");
-            if (ShouldProcess(UserGroupId, "Update user group"))
-            {
-                WriteData(Call("PUT", ItemPath, body));
-            }
-        }
     }
 
     /// <summary>
@@ -356,8 +310,9 @@ namespace Site24x7.Cmdlets
     [Cmdlet(VerbsCommon.Remove, "Site24x7UserGroup", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7UserGroupCommand : RemoveResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("user_group_id", "Id")]
+        /// <summary>The user group's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("user_group_id")]
         [ValidateNotNullOrEmpty]
         public string UserGroupId { get; set; }
 

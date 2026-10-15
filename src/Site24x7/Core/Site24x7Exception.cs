@@ -15,6 +15,14 @@ namespace Site24x7
         }
     }
 
+    /// <summary>A parameter value the module cannot use, found before anything is sent.</summary>
+    public class Site24x7ArgumentException : Site24x7Exception
+    {
+        public Site24x7ArgumentException(string message) : base(message)
+        {
+        }
+    }
+
     /// <summary>
     /// A failure reported by the Site24x7 or Zoho API. ErrorCode and ErrorInfo carry the
     /// "code" and "error_info" fields from the response body when the API sends them.

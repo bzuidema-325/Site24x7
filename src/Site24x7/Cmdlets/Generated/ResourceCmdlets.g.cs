@@ -15,22 +15,24 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7ThresholdProfileCommand : GetResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("profile_id", "Id")]
+        /// <summary>The threshold profile's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("profile_id")]
         [ValidateNotNullOrEmpty]
         public string ProfileId { get; set; }
 
+        protected override string ResourceId => ProfileId;
         protected override string ResourcePath => Endpoints.ThresholdProfiles;
         protected override string ResourceLabel => "threshold profile";
-        protected override string ResourceId => ProfileId;
+        protected override string ApiVersion => "2.1";
         protected override string NameProperty => "profile_name";
     }
 
     /// <summary>Settings shared by New-Site24x7ThresholdProfile and Set-Site24x7ThresholdProfile.</summary>
     public abstract class Site24x7ThresholdProfileWriteCmdlet : WriteResourceCmdlet
     {
+        /// <summary>The threshold profile's name.</summary>
         [Parameter]
-        [Alias("profile_name")]
         public virtual string ProfileName { get; set; }
 
         /// <summary>The monitor type the profile applies to, for example URL or SERVER.</summary>
@@ -39,20 +41,19 @@ namespace Site24x7.Cmdlets
 
         /// <summary>1 = static thresholds, 2 = AI-based thresholds.</summary>
         [Parameter]
-        [Alias("profile_type")]
         public int ProfileType { get; set; }
 
         /// <summary>How many locations must report down before the monitor is down.</summary>
         [Parameter]
-        [Alias("down_location_threshold")]
         public int DownLocationThreshold { get; set; }
 
+        /// <summary>Alert when the website content changes.</summary>
         [Parameter]
-        [Alias("website_content_modified")]
         public SwitchParameter WebsiteContentModified { get; set; }
 
         protected override string ResourcePath => Endpoints.ThresholdProfiles;
         protected override string ResourceLabel => "threshold profile";
+        protected override string ApiVersion => "2.1";
 
         protected override void BuildBody(IDictionary body)
         {
@@ -68,53 +69,34 @@ namespace Site24x7.Cmdlets
     /// <para type="synopsis">Creates a threshold profile. Fields without a parameter can be passed with -Property.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.New, "Site24x7ThresholdProfile", SupportsShouldProcess = true)]
-    [Alias("New-Site24x7ThresholdProfile_Incomplete")]
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7ThresholdProfileCommand : Site24x7ThresholdProfileWriteCmdlet
     {
+        /// <summary>The threshold profile's name.</summary>
         [Parameter(Mandatory = true, Position = 0)]
-        [Alias("profile_name")]
         [ValidateNotNullOrEmpty]
         public override string ProfileName { get; set; }
 
+        /// <summary>The monitor type the profile applies to, for example URL or SERVER.</summary>
         [Parameter(Mandatory = true, Position = 1)]
         [ValidateNotNullOrEmpty]
         public override string Type { get; set; }
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (ShouldProcess(Describe(body, ResourceLabel), "Create threshold profile"))
-            {
-                WriteData(Call("POST", ResourcePath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
     /// <para type="synopsis">Updates a threshold profile. Only the settings you pass are sent.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Set, "Site24x7ThresholdProfile", SupportsShouldProcess = true)]
-    [Alias("Update-Site24x7ThresholdProfile")]
     [OutputType(typeof(PSObject))]
     public sealed class SetSite24x7ThresholdProfileCommand : Site24x7ThresholdProfileWriteCmdlet
     {
+        /// <summary>The threshold profile's id.</summary>
         [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("profile_id", "Id")]
+        [Alias("profile_id")]
         [ValidateNotNullOrEmpty]
         public string ProfileId { get; set; }
 
         protected override string ResourceId => ProfileId;
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (body.Count == 0) throw new Site24x7Exception($"Nothing to update on threshold profile {ProfileId}. Pass at least one setting or -Property.");
-            if (ShouldProcess(ProfileId, "Update threshold profile"))
-            {
-                WriteData(Call("PUT", ItemPath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -123,14 +105,16 @@ namespace Site24x7.Cmdlets
     [Cmdlet(VerbsCommon.Remove, "Site24x7ThresholdProfile", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7ThresholdProfileCommand : RemoveResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("profile_id", "Id")]
+        /// <summary>The threshold profile's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("profile_id")]
         [ValidateNotNullOrEmpty]
         public string ProfileId { get; set; }
 
+        protected override string ResourceId => ProfileId;
         protected override string ResourcePath => Endpoints.ThresholdProfiles;
         protected override string ResourceLabel => "threshold profile";
-        protected override string ResourceId => ProfileId;
+        protected override string ApiVersion => "2.1";
     }
 
     #endregion
@@ -144,59 +128,55 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7NotificationProfileCommand : GetResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("profile_id", "Id")]
+        /// <summary>The notification profile's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("profile_id")]
         [ValidateNotNullOrEmpty]
         public string ProfileId { get; set; }
 
+        protected override string ResourceId => ProfileId;
         protected override string ResourcePath => Endpoints.NotificationProfiles;
         protected override string ResourceLabel => "notification profile";
-        protected override string ResourceId => ProfileId;
         protected override string NameProperty => "profile_name";
     }
 
     /// <summary>Settings shared by New-Site24x7NotificationProfile and Set-Site24x7NotificationProfile.</summary>
     public abstract class Site24x7NotificationProfileWriteCmdlet : WriteResourceCmdlet
     {
+        /// <summary>The notification profile's name.</summary>
         [Parameter]
-        [Alias("profile_name")]
         public virtual string ProfileName { get; set; }
 
         /// <summary>Attach a root cause analysis to down alerts.</summary>
         [Parameter]
-        [Alias("rca_needed")]
         public SwitchParameter RcaNeeded { get; set; }
 
+        /// <summary>Alert only after IT automation actions have run.</summary>
         [Parameter]
-        [Alias("notify_after_executing_actions")]
         public SwitchParameter NotifyAfterExecutingActions { get; set; }
 
+        /// <summary>Do not run IT automation actions for dependent monitors.</summary>
         [Parameter]
-        [Alias("suppress_automation")]
         public SwitchParameter SuppressAutomation { get; set; }
 
         /// <summary>Number of polls to wait before alerting on a down state.</summary>
         [Parameter]
-        [Alias("downtime_notification_delay")]
         public int DowntimeNotificationDelay { get; set; }
 
         /// <summary>Repeat the alert every N polls while down.</summary>
         [Parameter]
-        [Alias("persistent_notification")]
         public int PersistentNotification { get; set; }
 
+        /// <summary>The user group alerted when a down alert is escalated.</summary>
         [Parameter]
-        [Alias("escalation_user_group_id")]
         public string EscalationUserGroupId { get; set; }
 
         /// <summary>Minutes to wait before escalating.</summary>
         [Parameter]
-        [Alias("escalation_wait_time")]
         public int EscalationWaitTime { get; set; }
 
         /// <summary>Email template id (see Get-Site24x7EmailTemplate).</summary>
         [Parameter]
-        [Alias("template_id")]
         public string TemplateId { get; set; }
 
         protected override string ResourcePath => Endpoints.NotificationProfiles;
@@ -223,19 +203,10 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7NotificationProfileCommand : Site24x7NotificationProfileWriteCmdlet
     {
+        /// <summary>The notification profile's name.</summary>
         [Parameter(Mandatory = true, Position = 0)]
-        [Alias("profile_name")]
         [ValidateNotNullOrEmpty]
         public override string ProfileName { get; set; }
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (ShouldProcess(Describe(body, ResourceLabel), "Create notification profile"))
-            {
-                WriteData(Call("POST", ResourcePath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -245,22 +216,13 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class SetSite24x7NotificationProfileCommand : Site24x7NotificationProfileWriteCmdlet
     {
+        /// <summary>The notification profile's id.</summary>
         [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("profile_id", "Id")]
+        [Alias("profile_id")]
         [ValidateNotNullOrEmpty]
         public string ProfileId { get; set; }
 
         protected override string ResourceId => ProfileId;
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (body.Count == 0) throw new Site24x7Exception($"Nothing to update on notification profile {ProfileId}. Pass at least one setting or -Property.");
-            if (ShouldProcess(ProfileId, "Update notification profile"))
-            {
-                WriteData(Call("PUT", ItemPath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -269,14 +231,15 @@ namespace Site24x7.Cmdlets
     [Cmdlet(VerbsCommon.Remove, "Site24x7NotificationProfile", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7NotificationProfileCommand : RemoveResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("profile_id", "Id")]
+        /// <summary>The notification profile's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("profile_id")]
         [ValidateNotNullOrEmpty]
         public string ProfileId { get; set; }
 
+        protected override string ResourceId => ProfileId;
         protected override string ResourcePath => Endpoints.NotificationProfiles;
         protected override string ResourceLabel => "notification profile";
-        protected override string ResourceId => ProfileId;
     }
 
     #endregion
@@ -290,35 +253,35 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7LocationProfileCommand : GetResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("profile_id", "Id")]
+        /// <summary>The location profile's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("profile_id")]
         [ValidateNotNullOrEmpty]
         public string ProfileId { get; set; }
 
+        protected override string ResourceId => ProfileId;
         protected override string ResourcePath => Endpoints.LocationProfiles;
         protected override string ResourceLabel => "location profile";
-        protected override string ResourceId => ProfileId;
         protected override string NameProperty => "profile_name";
     }
 
     /// <summary>Settings shared by New-Site24x7LocationProfile and Set-Site24x7LocationProfile.</summary>
     public abstract class Site24x7LocationProfileWriteCmdlet : WriteResourceCmdlet
     {
+        /// <summary>The location profile's name.</summary>
         [Parameter]
-        [Alias("profile_name")]
         public virtual string ProfileName { get; set; }
 
         /// <summary>Location id, from Get-Site24x7LocationTemplate.</summary>
         [Parameter]
-        [Alias("primary_location")]
         public virtual string PrimaryLocation { get; set; }
 
+        /// <summary>Location ids to fall back to.</summary>
         [Parameter]
-        [Alias("secondary_locations")]
-        public string[] SecondaryLocations { get; set; }
+        public string[] SecondaryLocation { get; set; }
 
+        /// <summary>Never check from locations outside the profile.</summary>
         [Parameter]
-        [Alias("restrict_alt_loc")]
         public SwitchParameter RestrictAlternateLocation { get; set; }
 
         protected override string ResourcePath => Endpoints.LocationProfiles;
@@ -328,7 +291,7 @@ namespace Site24x7.Cmdlets
         {
             AddIfBound(body, "profile_name", nameof(ProfileName), ProfileName);
             AddIfBound(body, "primary_location", nameof(PrimaryLocation), PrimaryLocation);
-            AddIfBound(body, "secondary_locations", nameof(SecondaryLocations), SecondaryLocations);
+            AddIfBound(body, "secondary_locations", nameof(SecondaryLocation), SecondaryLocation);
             AddIfBound(body, "restrict_alt_loc", nameof(RestrictAlternateLocation), RestrictAlternateLocation);
         }
     }
@@ -340,24 +303,15 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7LocationProfileCommand : Site24x7LocationProfileWriteCmdlet
     {
+        /// <summary>The location profile's name.</summary>
         [Parameter(Mandatory = true, Position = 0)]
-        [Alias("profile_name")]
         [ValidateNotNullOrEmpty]
         public override string ProfileName { get; set; }
 
+        /// <summary>Location id, from Get-Site24x7LocationTemplate.</summary>
         [Parameter(Mandatory = true, Position = 1)]
-        [Alias("primary_location")]
         [ValidateNotNullOrEmpty]
         public override string PrimaryLocation { get; set; }
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (ShouldProcess(Describe(body, ResourceLabel), "Create location profile"))
-            {
-                WriteData(Call("POST", ResourcePath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -367,22 +321,13 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class SetSite24x7LocationProfileCommand : Site24x7LocationProfileWriteCmdlet
     {
+        /// <summary>The location profile's id.</summary>
         [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("profile_id", "Id")]
+        [Alias("profile_id")]
         [ValidateNotNullOrEmpty]
         public string ProfileId { get; set; }
 
         protected override string ResourceId => ProfileId;
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (body.Count == 0) throw new Site24x7Exception($"Nothing to update on location profile {ProfileId}. Pass at least one setting or -Property.");
-            if (ShouldProcess(ProfileId, "Update location profile"))
-            {
-                WriteData(Call("PUT", ItemPath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -391,14 +336,15 @@ namespace Site24x7.Cmdlets
     [Cmdlet(VerbsCommon.Remove, "Site24x7LocationProfile", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7LocationProfileCommand : RemoveResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("profile_id", "Id")]
+        /// <summary>The location profile's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("profile_id")]
         [ValidateNotNullOrEmpty]
         public string ProfileId { get; set; }
 
+        protected override string ResourceId => ProfileId;
         protected override string ResourcePath => Endpoints.LocationProfiles;
         protected override string ResourceLabel => "location profile";
-        protected override string ResourceId => ProfileId;
     }
 
     #endregion
@@ -412,22 +358,23 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7ResourceCheckProfileCommand : GetResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("profile_id", "Id")]
+        /// <summary>The resource check profile's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("profile_id")]
         [ValidateNotNullOrEmpty]
         public string ProfileId { get; set; }
 
+        protected override string ResourceId => ProfileId;
         protected override string ResourcePath => Endpoints.ResourceCheckProfiles;
         protected override string ResourceLabel => "resource check profile";
-        protected override string ResourceId => ProfileId;
         protected override string NameProperty => "profile_name";
     }
 
     /// <summary>Settings shared by New-Site24x7ResourceCheckProfile and Set-Site24x7ResourceCheckProfile.</summary>
     public abstract class Site24x7ResourceCheckProfileWriteCmdlet : WriteResourceCmdlet
     {
+        /// <summary>The resource check profile's name.</summary>
         [Parameter]
-        [Alias("profile_name")]
         public virtual string ProfileName { get; set; }
 
         protected override string ResourcePath => Endpoints.ResourceCheckProfiles;
@@ -446,19 +393,10 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7ResourceCheckProfileCommand : Site24x7ResourceCheckProfileWriteCmdlet
     {
+        /// <summary>The resource check profile's name.</summary>
         [Parameter(Mandatory = true, Position = 0)]
-        [Alias("profile_name")]
         [ValidateNotNullOrEmpty]
         public override string ProfileName { get; set; }
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (ShouldProcess(Describe(body, ResourceLabel), "Create resource check profile"))
-            {
-                WriteData(Call("POST", ResourcePath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -468,22 +406,13 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class SetSite24x7ResourceCheckProfileCommand : Site24x7ResourceCheckProfileWriteCmdlet
     {
+        /// <summary>The resource check profile's id.</summary>
         [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("profile_id", "Id")]
+        [Alias("profile_id")]
         [ValidateNotNullOrEmpty]
         public string ProfileId { get; set; }
 
         protected override string ResourceId => ProfileId;
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (body.Count == 0) throw new Site24x7Exception($"Nothing to update on resource check profile {ProfileId}. Pass at least one setting or -Property.");
-            if (ShouldProcess(ProfileId, "Update resource check profile"))
-            {
-                WriteData(Call("PUT", ItemPath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -492,14 +421,15 @@ namespace Site24x7.Cmdlets
     [Cmdlet(VerbsCommon.Remove, "Site24x7ResourceCheckProfile", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7ResourceCheckProfileCommand : RemoveResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("profile_id", "Id")]
+        /// <summary>The resource check profile's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("profile_id")]
         [ValidateNotNullOrEmpty]
         public string ProfileId { get; set; }
 
+        protected override string ResourceId => ProfileId;
         protected override string ResourcePath => Endpoints.ResourceCheckProfiles;
         protected override string ResourceLabel => "resource check profile";
-        protected override string ResourceId => ProfileId;
     }
 
     #endregion
@@ -513,33 +443,33 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7CredentialProfileCommand : GetResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("credential_profile_id", "profile_id", "Id")]
+        /// <summary>The credential profile's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("credential_profile_id")]
         [ValidateNotNullOrEmpty]
         public string CredentialProfileId { get; set; }
 
+        protected override string ResourceId => CredentialProfileId;
         protected override string ResourcePath => Endpoints.CredentialProfiles;
         protected override string ResourceLabel => "credential profile";
-        protected override string ResourceId => CredentialProfileId;
         protected override string NameProperty => "credential_name";
     }
 
     /// <summary>Settings shared by New-Site24x7CredentialProfile and Set-Site24x7CredentialProfile.</summary>
     public abstract class Site24x7CredentialProfileWriteCmdlet : WriteResourceCmdlet
     {
+        /// <summary>The credential profile's name.</summary>
         [Parameter]
-        [Alias("credential_name")]
         public virtual string CredentialName { get; set; }
 
+        /// <summary>The API's credential type number.</summary>
         [Parameter]
-        [Alias("credential_type")]
         public int CredentialType { get; set; }
 
+        /// <summary>The user name and password the profile holds.</summary>
         [Parameter]
-        public string UserName { get; set; }
-
-        [Parameter]
-        public string Password { get; set; }
+        [Credential]
+        public PSCredential Credential { get; set; }
 
         protected override string ResourcePath => Endpoints.CredentialProfiles;
         protected override string ResourceLabel => "credential profile";
@@ -548,8 +478,11 @@ namespace Site24x7.Cmdlets
         {
             AddIfBound(body, "credential_name", nameof(CredentialName), CredentialName);
             AddIfBound(body, "credential_type", nameof(CredentialType), CredentialType);
-            AddIfBound(body, "username", nameof(UserName), UserName);
-            AddIfBound(body, "password", nameof(Password), Password);
+            if (Credential != null && Credential != PSCredential.Empty)
+            {
+                body["username"] = Credential.UserName;
+                body["password"] = Credential.GetNetworkCredential().Password;
+            }
         }
     }
 
@@ -560,19 +493,10 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7CredentialProfileCommand : Site24x7CredentialProfileWriteCmdlet
     {
+        /// <summary>The credential profile's name.</summary>
         [Parameter(Mandatory = true, Position = 0)]
-        [Alias("credential_name")]
         [ValidateNotNullOrEmpty]
         public override string CredentialName { get; set; }
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (ShouldProcess(Describe(body, ResourceLabel), "Create credential profile"))
-            {
-                WriteData(Call("POST", ResourcePath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -582,22 +506,13 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class SetSite24x7CredentialProfileCommand : Site24x7CredentialProfileWriteCmdlet
     {
+        /// <summary>The credential profile's id.</summary>
         [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("credential_profile_id", "profile_id", "Id")]
+        [Alias("credential_profile_id")]
         [ValidateNotNullOrEmpty]
         public string CredentialProfileId { get; set; }
 
         protected override string ResourceId => CredentialProfileId;
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (body.Count == 0) throw new Site24x7Exception($"Nothing to update on credential profile {CredentialProfileId}. Pass at least one setting or -Property.");
-            if (ShouldProcess(CredentialProfileId, "Update credential profile"))
-            {
-                WriteData(Call("PUT", ItemPath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -606,14 +521,15 @@ namespace Site24x7.Cmdlets
     [Cmdlet(VerbsCommon.Remove, "Site24x7CredentialProfile", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7CredentialProfileCommand : RemoveResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("credential_profile_id", "profile_id", "Id")]
+        /// <summary>The credential profile's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("credential_profile_id")]
         [ValidateNotNullOrEmpty]
         public string CredentialProfileId { get; set; }
 
+        protected override string ResourceId => CredentialProfileId;
         protected override string ResourcePath => Endpoints.CredentialProfiles;
         protected override string ResourceLabel => "credential profile";
-        protected override string ResourceId => CredentialProfileId;
     }
 
     #endregion
@@ -627,31 +543,31 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7TagCommand : GetResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("tag_id", "Id")]
+        /// <summary>The tag's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("tag_id")]
         [ValidateNotNullOrEmpty]
         public string TagId { get; set; }
 
+        protected override string ResourceId => TagId;
         protected override string ResourcePath => Endpoints.Tags;
         protected override string ResourceLabel => "tag";
-        protected override string ResourceId => TagId;
         protected override string NameProperty => "tag_name";
     }
 
     /// <summary>Settings shared by New-Site24x7Tag and Set-Site24x7Tag.</summary>
     public abstract class Site24x7TagWriteCmdlet : WriteResourceCmdlet
     {
+        /// <summary>The tag's name.</summary>
         [Parameter]
-        [Alias("tag_name")]
         public virtual string TagName { get; set; }
 
+        /// <summary>The tag's value.</summary>
         [Parameter]
-        [Alias("tag_value")]
         public string TagValue { get; set; }
 
         /// <summary>A hex color such as #B7DA9E.</summary>
         [Parameter]
-        [Alias("tag_color")]
         public string TagColor { get; set; }
 
         protected override string ResourcePath => Endpoints.Tags;
@@ -672,19 +588,10 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7TagCommand : Site24x7TagWriteCmdlet
     {
+        /// <summary>The tag's name.</summary>
         [Parameter(Mandatory = true, Position = 0)]
-        [Alias("tag_name")]
         [ValidateNotNullOrEmpty]
         public override string TagName { get; set; }
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (ShouldProcess(Describe(body, ResourceLabel), "Create tag"))
-            {
-                WriteData(Call("POST", ResourcePath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -694,22 +601,13 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class SetSite24x7TagCommand : Site24x7TagWriteCmdlet
     {
+        /// <summary>The tag's id.</summary>
         [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("tag_id", "Id")]
+        [Alias("tag_id")]
         [ValidateNotNullOrEmpty]
         public string TagId { get; set; }
 
         protected override string ResourceId => TagId;
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (body.Count == 0) throw new Site24x7Exception($"Nothing to update on tag {TagId}. Pass at least one setting or -Property.");
-            if (ShouldProcess(TagId, "Update tag"))
-            {
-                WriteData(Call("PUT", ItemPath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -718,14 +616,15 @@ namespace Site24x7.Cmdlets
     [Cmdlet(VerbsCommon.Remove, "Site24x7Tag", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7TagCommand : RemoveResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("tag_id", "Id")]
+        /// <summary>The tag's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("tag_id")]
         [ValidateNotNullOrEmpty]
         public string TagId { get; set; }
 
+        protected override string ResourceId => TagId;
         protected override string ResourcePath => Endpoints.Tags;
         protected override string ResourceLabel => "tag";
-        protected override string ResourceId => TagId;
     }
 
     #endregion
@@ -739,22 +638,23 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7OnCallScheduleCommand : GetResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("on_call_schedule_id", "schedule_id", "Id")]
+        /// <summary>The on-call schedule's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("on_call_schedule_id")]
         [ValidateNotNullOrEmpty]
         public string OnCallScheduleId { get; set; }
 
+        protected override string ResourceId => OnCallScheduleId;
         protected override string ResourcePath => Endpoints.OnCallSchedules;
         protected override string ResourceLabel => "on-call schedule";
-        protected override string ResourceId => OnCallScheduleId;
         protected override string NameProperty => "schedule_name";
     }
 
     /// <summary>Settings shared by New-Site24x7OnCallSchedule and Set-Site24x7OnCallSchedule.</summary>
     public abstract class Site24x7OnCallScheduleWriteCmdlet : WriteResourceCmdlet
     {
+        /// <summary>The on-call schedule's name.</summary>
         [Parameter]
-        [Alias("schedule_name")]
         public string ScheduleName { get; set; }
 
         protected override string ResourcePath => Endpoints.OnCallSchedules;
@@ -773,14 +673,6 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7OnCallScheduleCommand : Site24x7OnCallScheduleWriteCmdlet
     {
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (ShouldProcess(Describe(body, ResourceLabel), "Create on-call schedule"))
-            {
-                WriteData(Call("POST", ResourcePath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -790,22 +682,13 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class SetSite24x7OnCallScheduleCommand : Site24x7OnCallScheduleWriteCmdlet
     {
+        /// <summary>The on-call schedule's id.</summary>
         [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("on_call_schedule_id", "schedule_id", "Id")]
+        [Alias("on_call_schedule_id")]
         [ValidateNotNullOrEmpty]
         public string OnCallScheduleId { get; set; }
 
         protected override string ResourceId => OnCallScheduleId;
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (body.Count == 0) throw new Site24x7Exception($"Nothing to update on on-call schedule {OnCallScheduleId}. Pass at least one setting or -Property.");
-            if (ShouldProcess(OnCallScheduleId, "Update on-call schedule"))
-            {
-                WriteData(Call("PUT", ItemPath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -814,14 +697,15 @@ namespace Site24x7.Cmdlets
     [Cmdlet(VerbsCommon.Remove, "Site24x7OnCallSchedule", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7OnCallScheduleCommand : RemoveResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("on_call_schedule_id", "schedule_id", "Id")]
+        /// <summary>The on-call schedule's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("on_call_schedule_id")]
         [ValidateNotNullOrEmpty]
         public string OnCallScheduleId { get; set; }
 
+        protected override string ResourceId => OnCallScheduleId;
         protected override string ResourcePath => Endpoints.OnCallSchedules;
         protected override string ResourceLabel => "on-call schedule";
-        protected override string ResourceId => OnCallScheduleId;
     }
 
     #endregion
@@ -835,22 +719,23 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7AttributeAlertGroupCommand : GetResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("attribute_group_id", "Id")]
+        /// <summary>The attribute alert group's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("attribute_group_id")]
         [ValidateNotNullOrEmpty]
         public string AttributeGroupId { get; set; }
 
+        protected override string ResourceId => AttributeGroupId;
         protected override string ResourcePath => Endpoints.AttributeGroups;
         protected override string ResourceLabel => "attribute alert group";
-        protected override string ResourceId => AttributeGroupId;
         protected override string NameProperty => "display_name";
     }
 
     /// <summary>Settings shared by New-Site24x7AttributeAlertGroup and Set-Site24x7AttributeAlertGroup.</summary>
     public abstract class Site24x7AttributeAlertGroupWriteCmdlet : WriteResourceCmdlet
     {
+        /// <summary>The attribute alert group's name.</summary>
         [Parameter]
-        [Alias("display_name")]
         public string DisplayName { get; set; }
 
         protected override string ResourcePath => Endpoints.AttributeGroups;
@@ -869,14 +754,6 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7AttributeAlertGroupCommand : Site24x7AttributeAlertGroupWriteCmdlet
     {
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (ShouldProcess(Describe(body, ResourceLabel), "Create attribute alert group"))
-            {
-                WriteData(Call("POST", ResourcePath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -886,22 +763,13 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class SetSite24x7AttributeAlertGroupCommand : Site24x7AttributeAlertGroupWriteCmdlet
     {
+        /// <summary>The attribute alert group's id.</summary>
         [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("attribute_group_id", "Id")]
+        [Alias("attribute_group_id")]
         [ValidateNotNullOrEmpty]
         public string AttributeGroupId { get; set; }
 
         protected override string ResourceId => AttributeGroupId;
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (body.Count == 0) throw new Site24x7Exception($"Nothing to update on attribute alert group {AttributeGroupId}. Pass at least one setting or -Property.");
-            if (ShouldProcess(AttributeGroupId, "Update attribute alert group"))
-            {
-                WriteData(Call("PUT", ItemPath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -910,14 +778,15 @@ namespace Site24x7.Cmdlets
     [Cmdlet(VerbsCommon.Remove, "Site24x7AttributeAlertGroup", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7AttributeAlertGroupCommand : RemoveResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("attribute_group_id", "Id")]
+        /// <summary>The attribute alert group's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("attribute_group_id")]
         [ValidateNotNullOrEmpty]
         public string AttributeGroupId { get; set; }
 
+        protected override string ResourceId => AttributeGroupId;
         protected override string ResourcePath => Endpoints.AttributeGroups;
         protected override string ResourceLabel => "attribute alert group";
-        protected override string ResourceId => AttributeGroupId;
     }
 
     #endregion
@@ -931,22 +800,23 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7EmailTemplateCommand : GetResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("template_id", "Id")]
+        /// <summary>The email template's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("template_id")]
         [ValidateNotNullOrEmpty]
         public string TemplateId { get; set; }
 
+        protected override string ResourceId => TemplateId;
         protected override string ResourcePath => Endpoints.EmailTemplates;
         protected override string ResourceLabel => "email template";
-        protected override string ResourceId => TemplateId;
         protected override string NameProperty => "display_name";
     }
 
     /// <summary>Settings shared by New-Site24x7EmailTemplate and Set-Site24x7EmailTemplate.</summary>
     public abstract class Site24x7EmailTemplateWriteCmdlet : WriteResourceCmdlet
     {
+        /// <summary>The email template's name.</summary>
         [Parameter]
-        [Alias("display_name")]
         public string DisplayName { get; set; }
 
         protected override string ResourcePath => Endpoints.EmailTemplates;
@@ -965,14 +835,6 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7EmailTemplateCommand : Site24x7EmailTemplateWriteCmdlet
     {
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (ShouldProcess(Describe(body, ResourceLabel), "Create email template"))
-            {
-                WriteData(Call("POST", ResourcePath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -982,22 +844,13 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class SetSite24x7EmailTemplateCommand : Site24x7EmailTemplateWriteCmdlet
     {
+        /// <summary>The email template's id.</summary>
         [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("template_id", "Id")]
+        [Alias("template_id")]
         [ValidateNotNullOrEmpty]
         public string TemplateId { get; set; }
 
         protected override string ResourceId => TemplateId;
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (body.Count == 0) throw new Site24x7Exception($"Nothing to update on email template {TemplateId}. Pass at least one setting or -Property.");
-            if (ShouldProcess(TemplateId, "Update email template"))
-            {
-                WriteData(Call("PUT", ItemPath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -1006,14 +859,15 @@ namespace Site24x7.Cmdlets
     [Cmdlet(VerbsCommon.Remove, "Site24x7EmailTemplate", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7EmailTemplateCommand : RemoveResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("template_id", "Id")]
+        /// <summary>The email template's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("template_id")]
         [ValidateNotNullOrEmpty]
         public string TemplateId { get; set; }
 
+        protected override string ResourceId => TemplateId;
         protected override string ResourcePath => Endpoints.EmailTemplates;
         protected override string ResourceLabel => "email template";
-        protected override string ResourceId => TemplateId;
     }
 
     #endregion
@@ -1027,22 +881,23 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7BusinessHoursCommand : GetResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("business_hours_id", "business_hour_id", "Id")]
+        /// <summary>The business hours's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("business_hours_id")]
         [ValidateNotNullOrEmpty]
         public string BusinessHoursId { get; set; }
 
+        protected override string ResourceId => BusinessHoursId;
         protected override string ResourcePath => Endpoints.BusinessHours;
         protected override string ResourceLabel => "business hours";
-        protected override string ResourceId => BusinessHoursId;
         protected override string NameProperty => "display_name";
     }
 
     /// <summary>Settings shared by New-Site24x7BusinessHours and Set-Site24x7BusinessHours.</summary>
     public abstract class Site24x7BusinessHoursWriteCmdlet : WriteResourceCmdlet
     {
+        /// <summary>The business hours's name.</summary>
         [Parameter]
-        [Alias("display_name")]
         public string DisplayName { get; set; }
 
         protected override string ResourcePath => Endpoints.BusinessHours;
@@ -1061,14 +916,6 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7BusinessHoursCommand : Site24x7BusinessHoursWriteCmdlet
     {
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (ShouldProcess(Describe(body, ResourceLabel), "Create business hours"))
-            {
-                WriteData(Call("POST", ResourcePath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -1078,22 +925,13 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class SetSite24x7BusinessHoursCommand : Site24x7BusinessHoursWriteCmdlet
     {
+        /// <summary>The business hours's id.</summary>
         [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("business_hours_id", "business_hour_id", "Id")]
+        [Alias("business_hours_id")]
         [ValidateNotNullOrEmpty]
         public string BusinessHoursId { get; set; }
 
         protected override string ResourceId => BusinessHoursId;
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (body.Count == 0) throw new Site24x7Exception($"Nothing to update on business hours {BusinessHoursId}. Pass at least one setting or -Property.");
-            if (ShouldProcess(BusinessHoursId, "Update business hours"))
-            {
-                WriteData(Call("PUT", ItemPath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -1102,14 +940,15 @@ namespace Site24x7.Cmdlets
     [Cmdlet(VerbsCommon.Remove, "Site24x7BusinessHours", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7BusinessHoursCommand : RemoveResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("business_hours_id", "business_hour_id", "Id")]
+        /// <summary>The business hours's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("business_hours_id")]
         [ValidateNotNullOrEmpty]
         public string BusinessHoursId { get; set; }
 
+        protected override string ResourceId => BusinessHoursId;
         protected override string ResourcePath => Endpoints.BusinessHours;
         protected override string ResourceLabel => "business hours";
-        protected override string ResourceId => BusinessHoursId;
     }
 
     #endregion
@@ -1123,22 +962,23 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7OAuthProviderCommand : GetResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("provider_id", "Id")]
+        /// <summary>The OAuth provider's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("provider_id")]
         [ValidateNotNullOrEmpty]
         public string ProviderId { get; set; }
 
+        protected override string ResourceId => ProviderId;
         protected override string ResourcePath => Endpoints.OAuthProviders;
         protected override string ResourceLabel => "OAuth provider";
-        protected override string ResourceId => ProviderId;
         protected override string NameProperty => "name";
     }
 
     /// <summary>Settings shared by New-Site24x7OAuthProvider and Set-Site24x7OAuthProvider.</summary>
     public abstract class Site24x7OAuthProviderWriteCmdlet : WriteResourceCmdlet
     {
+        /// <summary>The OAuth provider's name.</summary>
         [Parameter]
-        [Alias("name")]
         public string ProviderName { get; set; }
 
         protected override string ResourcePath => Endpoints.OAuthProviders;
@@ -1157,14 +997,6 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7OAuthProviderCommand : Site24x7OAuthProviderWriteCmdlet
     {
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (ShouldProcess(Describe(body, ResourceLabel), "Create OAuth provider"))
-            {
-                WriteData(Call("POST", ResourcePath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -1174,22 +1006,13 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class SetSite24x7OAuthProviderCommand : Site24x7OAuthProviderWriteCmdlet
     {
+        /// <summary>The OAuth provider's id.</summary>
         [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("provider_id", "Id")]
+        [Alias("provider_id")]
         [ValidateNotNullOrEmpty]
         public string ProviderId { get; set; }
 
         protected override string ResourceId => ProviderId;
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (body.Count == 0) throw new Site24x7Exception($"Nothing to update on OAuth provider {ProviderId}. Pass at least one setting or -Property.");
-            if (ShouldProcess(ProviderId, "Update OAuth provider"))
-            {
-                WriteData(Call("PUT", ItemPath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -1198,14 +1021,15 @@ namespace Site24x7.Cmdlets
     [Cmdlet(VerbsCommon.Remove, "Site24x7OAuthProvider", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7OAuthProviderCommand : RemoveResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("provider_id", "Id")]
+        /// <summary>The OAuth provider's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("provider_id")]
         [ValidateNotNullOrEmpty]
         public string ProviderId { get; set; }
 
+        protected override string ResourceId => ProviderId;
         protected override string ResourcePath => Endpoints.OAuthProviders;
         protected override string ResourceLabel => "OAuth provider";
-        protected override string ResourceId => ProviderId;
     }
 
     #endregion
@@ -1219,14 +1043,15 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7WebTokenCommand : GetResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("web_token_id", "token_id", "Id")]
+        /// <summary>The web token's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("web_token_id")]
         [ValidateNotNullOrEmpty]
         public string WebTokenId { get; set; }
 
+        protected override string ResourceId => WebTokenId;
         protected override string ResourcePath => Endpoints.WebTokens;
         protected override string ResourceLabel => "web token";
-        protected override string ResourceId => WebTokenId;
         protected override string NameProperty => "name";
     }
 
@@ -1248,14 +1073,6 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7WebTokenCommand : Site24x7WebTokenWriteCmdlet
     {
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (ShouldProcess(Describe(body, ResourceLabel), "Create web token"))
-            {
-                WriteData(Call("POST", ResourcePath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -1265,22 +1082,13 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class SetSite24x7WebTokenCommand : Site24x7WebTokenWriteCmdlet
     {
+        /// <summary>The web token's id.</summary>
         [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("web_token_id", "token_id", "Id")]
+        [Alias("web_token_id")]
         [ValidateNotNullOrEmpty]
         public string WebTokenId { get; set; }
 
         protected override string ResourceId => WebTokenId;
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (body.Count == 0) throw new Site24x7Exception($"Nothing to update on web token {WebTokenId}. Pass at least one setting or -Property.");
-            if (ShouldProcess(WebTokenId, "Update web token"))
-            {
-                WriteData(Call("PUT", ItemPath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -1289,14 +1097,15 @@ namespace Site24x7.Cmdlets
     [Cmdlet(VerbsCommon.Remove, "Site24x7WebToken", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7WebTokenCommand : RemoveResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("web_token_id", "token_id", "Id")]
+        /// <summary>The web token's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("web_token_id")]
         [ValidateNotNullOrEmpty]
         public string WebTokenId { get; set; }
 
+        protected override string ResourceId => WebTokenId;
         protected override string ResourcePath => Endpoints.WebTokens;
         protected override string ResourceLabel => "web token";
-        protected override string ResourceId => WebTokenId;
     }
 
     #endregion
@@ -1310,24 +1119,26 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7GlobalParameterCommand : GetResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("param_id", "parameter_id", "Id")]
+        /// <summary>The global parameter's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("param_id")]
         [ValidateNotNullOrEmpty]
         public string ParameterId { get; set; }
 
+        protected override string ResourceId => ParameterId;
         protected override string ResourcePath => Endpoints.GlobalParameters;
         protected override string ResourceLabel => "global parameter";
-        protected override string ResourceId => ParameterId;
         protected override string NameProperty => "name";
     }
 
     /// <summary>Settings shared by New-Site24x7GlobalParameter and Set-Site24x7GlobalParameter.</summary>
     public abstract class Site24x7GlobalParameterWriteCmdlet : WriteResourceCmdlet
     {
+        /// <summary>The global parameter's name.</summary>
         [Parameter]
-        [Alias("name")]
         public string ParameterName { get; set; }
 
+        /// <summary>The parameter's value.</summary>
         [Parameter]
         public string Value { get; set; }
 
@@ -1348,14 +1159,6 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7GlobalParameterCommand : Site24x7GlobalParameterWriteCmdlet
     {
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (ShouldProcess(Describe(body, ResourceLabel), "Create global parameter"))
-            {
-                WriteData(Call("POST", ResourcePath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -1365,22 +1168,13 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class SetSite24x7GlobalParameterCommand : Site24x7GlobalParameterWriteCmdlet
     {
+        /// <summary>The global parameter's id.</summary>
         [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("param_id", "parameter_id", "Id")]
+        [Alias("param_id")]
         [ValidateNotNullOrEmpty]
         public string ParameterId { get; set; }
 
         protected override string ResourceId => ParameterId;
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (body.Count == 0) throw new Site24x7Exception($"Nothing to update on global parameter {ParameterId}. Pass at least one setting or -Property.");
-            if (ShouldProcess(ParameterId, "Update global parameter"))
-            {
-                WriteData(Call("PUT", ItemPath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -1389,14 +1183,15 @@ namespace Site24x7.Cmdlets
     [Cmdlet(VerbsCommon.Remove, "Site24x7GlobalParameter", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7GlobalParameterCommand : RemoveResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("param_id", "parameter_id", "Id")]
+        /// <summary>The global parameter's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("param_id")]
         [ValidateNotNullOrEmpty]
         public string ParameterId { get; set; }
 
+        protected override string ResourceId => ParameterId;
         protected override string ResourcePath => Endpoints.GlobalParameters;
         protected override string ResourceLabel => "global parameter";
-        protected override string ResourceId => ParameterId;
     }
 
     #endregion
@@ -1410,40 +1205,39 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7ITAutomationCommand : GetResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("action_id", "Id")]
+        /// <summary>The IT automation's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("action_id")]
         [ValidateNotNullOrEmpty]
         public string ActionId { get; set; }
 
+        protected override string ResourceId => ActionId;
         protected override string ResourcePath => Endpoints.ITAutomation;
         protected override string ResourceLabel => "IT automation";
-        protected override string ResourceId => ActionId;
         protected override string NameProperty => "action_name";
     }
 
     /// <summary>Settings shared by New-Site24x7ITAutomation and Set-Site24x7ITAutomation.</summary>
     public abstract class Site24x7ITAutomationWriteCmdlet : WriteResourceCmdlet
     {
+        /// <summary>The IT automation's name.</summary>
         [Parameter]
-        [Alias("action_name")]
         public virtual string ActionName { get; set; }
 
         /// <summary>The automation type constant, for example 1 for URL action.</summary>
         [Parameter]
-        [Alias("action_type")]
         public int ActionType { get; set; }
 
+        /// <summary>The URL the action calls.</summary>
         [Parameter]
-        [Alias("action_url")]
         public string ActionUrl { get; set; }
 
         /// <summary>P = POST, G = GET.</summary>
         [Parameter]
-        [Alias("action_method")]
         public string ActionMethod { get; set; }
 
+        /// <summary>Seconds to wait for the action to finish.</summary>
         [Parameter]
-        [Alias("action_timeout")]
         public int ActionTimeout { get; set; }
 
         protected override string ResourcePath => Endpoints.ITAutomation;
@@ -1466,19 +1260,10 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7ITAutomationCommand : Site24x7ITAutomationWriteCmdlet
     {
+        /// <summary>The IT automation's name.</summary>
         [Parameter(Mandatory = true, Position = 0)]
-        [Alias("action_name")]
         [ValidateNotNullOrEmpty]
         public override string ActionName { get; set; }
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (ShouldProcess(Describe(body, ResourceLabel), "Create IT automation"))
-            {
-                WriteData(Call("POST", ResourcePath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -1488,22 +1273,13 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class SetSite24x7ITAutomationCommand : Site24x7ITAutomationWriteCmdlet
     {
+        /// <summary>The IT automation's id.</summary>
         [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("action_id", "Id")]
+        [Alias("action_id")]
         [ValidateNotNullOrEmpty]
         public string ActionId { get; set; }
 
         protected override string ResourceId => ActionId;
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (body.Count == 0) throw new Site24x7Exception($"Nothing to update on IT automation {ActionId}. Pass at least one setting or -Property.");
-            if (ShouldProcess(ActionId, "Update IT automation"))
-            {
-                WriteData(Call("PUT", ItemPath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -1512,14 +1288,15 @@ namespace Site24x7.Cmdlets
     [Cmdlet(VerbsCommon.Remove, "Site24x7ITAutomation", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7ITAutomationCommand : RemoveResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("action_id", "Id")]
+        /// <summary>The IT automation's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("action_id")]
         [ValidateNotNullOrEmpty]
         public string ActionId { get; set; }
 
+        protected override string ResourceId => ActionId;
         protected override string ResourcePath => Endpoints.ITAutomation;
         protected override string ResourceLabel => "IT automation";
-        protected override string ResourceId => ActionId;
     }
 
     #endregion
@@ -1533,14 +1310,15 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7ConfigurationRuleCommand : GetResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("rule_id", "Id")]
+        /// <summary>The configuration rule's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("rule_id")]
         [ValidateNotNullOrEmpty]
         public string RuleId { get; set; }
 
+        protected override string ResourceId => RuleId;
         protected override string ResourcePath => Endpoints.ConfigurationRules;
         protected override string ResourceLabel => "configuration rule";
-        protected override string ResourceId => RuleId;
         protected override string NameProperty => "rule_name";
     }
 
@@ -1562,14 +1340,6 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7ConfigurationRuleCommand : Site24x7ConfigurationRuleWriteCmdlet
     {
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (ShouldProcess(Describe(body, ResourceLabel), "Create configuration rule"))
-            {
-                WriteData(Call("POST", ResourcePath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -1579,22 +1349,13 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class SetSite24x7ConfigurationRuleCommand : Site24x7ConfigurationRuleWriteCmdlet
     {
+        /// <summary>The configuration rule's id.</summary>
         [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("rule_id", "Id")]
+        [Alias("rule_id")]
         [ValidateNotNullOrEmpty]
         public string RuleId { get; set; }
 
         protected override string ResourceId => RuleId;
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (body.Count == 0) throw new Site24x7Exception($"Nothing to update on configuration rule {RuleId}. Pass at least one setting or -Property.");
-            if (ShouldProcess(RuleId, "Update configuration rule"))
-            {
-                WriteData(Call("PUT", ItemPath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -1603,14 +1364,15 @@ namespace Site24x7.Cmdlets
     [Cmdlet(VerbsCommon.Remove, "Site24x7ConfigurationRule", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7ConfigurationRuleCommand : RemoveResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("rule_id", "Id")]
+        /// <summary>The configuration rule's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("rule_id")]
         [ValidateNotNullOrEmpty]
         public string RuleId { get; set; }
 
+        protected override string ResourceId => RuleId;
         protected override string ResourcePath => Endpoints.ConfigurationRules;
         protected override string ResourceLabel => "configuration rule";
-        protected override string ResourceId => RuleId;
     }
 
     #endregion
@@ -1624,22 +1386,23 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7ScheduledReportCommand : GetResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("report_id", "Id")]
+        /// <summary>The scheduled report's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("report_id")]
         [ValidateNotNullOrEmpty]
         public string ReportId { get; set; }
 
+        protected override string ResourceId => ReportId;
         protected override string ResourcePath => Endpoints.ScheduledReports;
         protected override string ResourceLabel => "scheduled report";
-        protected override string ResourceId => ReportId;
         protected override string NameProperty => "display_name";
     }
 
     /// <summary>Settings shared by New-Site24x7ScheduledReport and Set-Site24x7ScheduledReport.</summary>
     public abstract class Site24x7ScheduledReportWriteCmdlet : WriteResourceCmdlet
     {
+        /// <summary>The scheduled report's name.</summary>
         [Parameter]
-        [Alias("display_name")]
         public string DisplayName { get; set; }
 
         protected override string ResourcePath => Endpoints.ScheduledReports;
@@ -1658,14 +1421,6 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7ScheduledReportCommand : Site24x7ScheduledReportWriteCmdlet
     {
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (ShouldProcess(Describe(body, ResourceLabel), "Create scheduled report"))
-            {
-                WriteData(Call("POST", ResourcePath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -1675,22 +1430,13 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class SetSite24x7ScheduledReportCommand : Site24x7ScheduledReportWriteCmdlet
     {
+        /// <summary>The scheduled report's id.</summary>
         [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("report_id", "Id")]
+        [Alias("report_id")]
         [ValidateNotNullOrEmpty]
         public string ReportId { get; set; }
 
         protected override string ResourceId => ReportId;
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (body.Count == 0) throw new Site24x7Exception($"Nothing to update on scheduled report {ReportId}. Pass at least one setting or -Property.");
-            if (ShouldProcess(ReportId, "Update scheduled report"))
-            {
-                WriteData(Call("PUT", ItemPath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -1699,14 +1445,15 @@ namespace Site24x7.Cmdlets
     [Cmdlet(VerbsCommon.Remove, "Site24x7ScheduledReport", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7ScheduledReportCommand : RemoveResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("report_id", "Id")]
+        /// <summary>The scheduled report's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("report_id")]
         [ValidateNotNullOrEmpty]
         public string ReportId { get; set; }
 
+        protected override string ResourceId => ReportId;
         protected override string ResourcePath => Endpoints.ScheduledReports;
         protected override string ResourceLabel => "scheduled report";
-        protected override string ResourceId => ReportId;
     }
 
     #endregion
@@ -1720,22 +1467,23 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7SlaSettingCommand : GetResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("sla_id", "Id")]
+        /// <summary>The SLA setting's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("sla_id")]
         [ValidateNotNullOrEmpty]
         public string SlaId { get; set; }
 
+        protected override string ResourceId => SlaId;
         protected override string ResourcePath => Endpoints.SlaSettings;
         protected override string ResourceLabel => "SLA setting";
-        protected override string ResourceId => SlaId;
         protected override string NameProperty => "display_name";
     }
 
     /// <summary>Settings shared by New-Site24x7SlaSetting and Set-Site24x7SlaSetting.</summary>
     public abstract class Site24x7SlaSettingWriteCmdlet : WriteResourceCmdlet
     {
+        /// <summary>The SLA setting's name.</summary>
         [Parameter]
-        [Alias("display_name")]
         public string DisplayName { get; set; }
 
         protected override string ResourcePath => Endpoints.SlaSettings;
@@ -1754,14 +1502,6 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7SlaSettingCommand : Site24x7SlaSettingWriteCmdlet
     {
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (ShouldProcess(Describe(body, ResourceLabel), "Create SLA setting"))
-            {
-                WriteData(Call("POST", ResourcePath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -1771,22 +1511,13 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class SetSite24x7SlaSettingCommand : Site24x7SlaSettingWriteCmdlet
     {
+        /// <summary>The SLA setting's id.</summary>
         [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("sla_id", "Id")]
+        [Alias("sla_id")]
         [ValidateNotNullOrEmpty]
         public string SlaId { get; set; }
 
         protected override string ResourceId => SlaId;
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (body.Count == 0) throw new Site24x7Exception($"Nothing to update on SLA setting {SlaId}. Pass at least one setting or -Property.");
-            if (ShouldProcess(SlaId, "Update SLA setting"))
-            {
-                WriteData(Call("PUT", ItemPath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -1795,14 +1526,15 @@ namespace Site24x7.Cmdlets
     [Cmdlet(VerbsCommon.Remove, "Site24x7SlaSetting", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7SlaSettingCommand : RemoveResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("sla_id", "Id")]
+        /// <summary>The SLA setting's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("sla_id")]
         [ValidateNotNullOrEmpty]
         public string SlaId { get; set; }
 
+        protected override string ResourceId => SlaId;
         protected override string ResourcePath => Endpoints.SlaSettings;
         protected override string ResourceLabel => "SLA setting";
-        protected override string ResourceId => SlaId;
     }
 
     #endregion
@@ -1816,22 +1548,23 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7StatusPageCommand : GetResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("statuspage_id", "status_page_id", "Id")]
+        /// <summary>The status page's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("statuspage_id")]
         [ValidateNotNullOrEmpty]
         public string StatusPageId { get; set; }
 
+        protected override string ResourceId => StatusPageId;
         protected override string ResourcePath => Endpoints.StatusPages;
         protected override string ResourceLabel => "status page";
-        protected override string ResourceId => StatusPageId;
         protected override string NameProperty => "display_name";
     }
 
     /// <summary>Settings shared by New-Site24x7StatusPage and Set-Site24x7StatusPage.</summary>
     public abstract class Site24x7StatusPageWriteCmdlet : WriteResourceCmdlet
     {
+        /// <summary>The status page's name.</summary>
         [Parameter]
-        [Alias("display_name")]
         public string DisplayName { get; set; }
 
         protected override string ResourcePath => Endpoints.StatusPages;
@@ -1850,14 +1583,6 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7StatusPageCommand : Site24x7StatusPageWriteCmdlet
     {
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (ShouldProcess(Describe(body, ResourceLabel), "Create status page"))
-            {
-                WriteData(Call("POST", ResourcePath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -1867,22 +1592,13 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class SetSite24x7StatusPageCommand : Site24x7StatusPageWriteCmdlet
     {
+        /// <summary>The status page's id.</summary>
         [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("statuspage_id", "status_page_id", "Id")]
+        [Alias("statuspage_id")]
         [ValidateNotNullOrEmpty]
         public string StatusPageId { get; set; }
 
         protected override string ResourceId => StatusPageId;
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (body.Count == 0) throw new Site24x7Exception($"Nothing to update on status page {StatusPageId}. Pass at least one setting or -Property.");
-            if (ShouldProcess(StatusPageId, "Update status page"))
-            {
-                WriteData(Call("PUT", ItemPath, body, apiVersion: ApiVersion));
-            }
-        }
     }
 
     /// <summary>
@@ -1891,14 +1607,15 @@ namespace Site24x7.Cmdlets
     [Cmdlet(VerbsCommon.Remove, "Site24x7StatusPage", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7StatusPageCommand : RemoveResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("statuspage_id", "status_page_id", "Id")]
+        /// <summary>The status page's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("statuspage_id")]
         [ValidateNotNullOrEmpty]
         public string StatusPageId { get; set; }
 
+        protected override string ResourceId => StatusPageId;
         protected override string ResourcePath => Endpoints.StatusPages;
         protected override string ResourceLabel => "status page";
-        protected override string ResourceId => StatusPageId;
     }
 
     #endregion
@@ -1912,14 +1629,15 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7ThirdPartyIntegrationCommand : GetResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("service_id", "third_party_service_id", "Id")]
+        /// <summary>The third-party integration's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("service_id")]
         [ValidateNotNullOrEmpty]
         public string ServiceId { get; set; }
 
+        protected override string ResourceId => ServiceId;
         protected override string ResourcePath => Endpoints.ThirdPartyServices;
         protected override string ResourceLabel => "third-party integration";
-        protected override string ResourceId => ServiceId;
         protected override string NameProperty => "name";
     }
 
@@ -1929,14 +1647,15 @@ namespace Site24x7.Cmdlets
     [Cmdlet(VerbsCommon.Remove, "Site24x7ThirdPartyIntegration", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7ThirdPartyIntegrationCommand : RemoveResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("service_id", "third_party_service_id", "Id")]
+        /// <summary>The third-party integration's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("service_id")]
         [ValidateNotNullOrEmpty]
         public string ServiceId { get; set; }
 
+        protected override string ResourceId => ServiceId;
         protected override string ResourcePath => Endpoints.ThirdPartyServices;
         protected override string ResourceLabel => "third-party integration";
-        protected override string ResourceId => ServiceId;
     }
 
     #endregion
@@ -1950,14 +1669,15 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7OnPremisePollerCommand : GetResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("poller_id", "Id")]
+        /// <summary>The on-premise poller's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("poller_id")]
         [ValidateNotNullOrEmpty]
         public string PollerId { get; set; }
 
+        protected override string ResourceId => PollerId;
         protected override string ResourcePath => Endpoints.OnPremisePollers;
         protected override string ResourceLabel => "on-premise poller";
-        protected override string ResourceId => PollerId;
         protected override string NameProperty => "display_name";
     }
 

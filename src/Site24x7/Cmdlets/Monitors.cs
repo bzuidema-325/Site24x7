@@ -6,27 +6,36 @@ using System.Management.Automation;
 namespace Site24x7.Cmdlets
 {
     // https://www.site24x7.com/help/api/#monitors
+    //
+    // Id parameters take an alias that is the API's own field name (monitor_id and so on), so
+    // objects returned by one cmdlet can be piped to the next: Get-Site24x7Monitor | Disable-Site24x7Monitor.
 
     /// <summary>
     /// <para type="synopsis">Gets monitors.</para>
     /// <para type="description">Without -MonitorId, lists every monitor, optionally filtered by -Name (wildcards allowed) and -Type.</para>
     /// </summary>
+    /// <example>
+    /// <code>Get-Site24x7Monitor -Name 'web-*' -Type URL</code>
+    /// </example>
     [Cmdlet(VerbsCommon.Get, "Site24x7Monitor", DefaultParameterSetName = ParameterSets.List)]
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7MonitorCommand : GetResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("monitor_id", "Id")]
+        /// <summary>The monitor's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("monitor_id")]
         [ValidateNotNullOrEmpty]
         public string MonitorId { get; set; }
 
         /// <summary>Only monitors of this type, for example URL, RESTAPI, SSL_CERT, SERVER. See Get-Site24x7MonitorType.</summary>
         [Parameter(ParameterSetName = ParameterSets.List)]
         [SupportsWildcards]
+        [ValidateNotNullOrEmpty]
         public string Type { get; set; }
 
         protected override string ResourcePath => Endpoints.Monitors;
         protected override string ResourceId => MonitorId;
+        protected override string ResourceLabel => "monitor";
 
         protected override void ProcessRecordCore()
         {
@@ -36,67 +45,65 @@ namespace Site24x7.Cmdlets
                 return;
             }
 
-            var data = FilterByName(Call("GET", ResourcePath, query: Query));
             var pattern = new WildcardPattern(Type, WildcardOptions.IgnoreCase);
-            if (data is object[] items)
-            {
-                WriteData(items.Where(i => pattern.IsMatch(Convert.ToString(Json.Get(i, "type")) ?? string.Empty)).ToArray());
-            }
+            var monitors = FilterByName(Call("GET", ResourcePath, query: Query));
+            WriteData(monitors.Where(m => pattern.IsMatch(Convert.ToString(Json.Get(m, "type")) ?? string.Empty)).ToArray());
         }
     }
 
     /// <summary>Settings shared by every monitor type.</summary>
     public abstract class MonitorWriteCmdlet : WriteResourceCmdlet
     {
+        /// <summary>The monitor's name.</summary>
         [Parameter]
-        [Alias("display_name")]
         [ValidateNotNullOrEmpty]
         public virtual string DisplayName { get; set; }
 
         /// <summary>How often to check, in minutes, as the API expects it (for example "1", "5", "15", "1440").</summary>
         [Parameter]
-        [Alias("check_frequency")]
+        [ValidateNotNullOrEmpty]
         public string CheckFrequency { get; set; }
 
         /// <summary>Request timeout in seconds.</summary>
         [Parameter]
+        [ValidateRange(1, 600)]
         public int Timeout { get; set; }
 
+        /// <summary>Where the monitor checks from. See Get-Site24x7LocationProfile.</summary>
         [Parameter]
-        [Alias("location_profile_id")]
         public string LocationProfileId { get; set; }
 
+        /// <summary>See Get-Site24x7NotificationProfile.</summary>
         [Parameter]
-        [Alias("notification_profile_id")]
         public string NotificationProfileId { get; set; }
 
+        /// <summary>See Get-Site24x7ThresholdProfile.</summary>
         [Parameter]
-        [Alias("threshold_profile_id")]
         public string ThresholdProfileId { get; set; }
 
+        /// <summary>The user groups that are alerted. See Get-Site24x7UserGroup.</summary>
         [Parameter]
-        [Alias("user_group_ids")]
-        public string[] UserGroupIds { get; set; }
+        public string[] UserGroupId { get; set; }
 
+        /// <summary>The monitor groups the monitor belongs to. See Get-Site24x7Group.</summary>
         [Parameter]
-        [Alias("monitor_groups")]
-        public string[] MonitorGroups { get; set; }
+        public string[] MonitorGroupId { get; set; }
 
+        /// <summary>See Get-Site24x7Tag.</summary>
         [Parameter]
-        [Alias("tag_ids")]
-        public string[] TagIds { get; set; }
+        public string[] TagId { get; set; }
 
+        /// <summary>See Get-Site24x7OnCallSchedule.</summary>
         [Parameter]
-        [Alias("on_call_schedule_id")]
         public string OnCallScheduleId { get; set; }
 
+        /// <summary>Third-party integrations to alert. See Get-Site24x7ThirdPartyIntegration.</summary>
         [Parameter]
-        [Alias("third_party_services")]
-        public string[] ThirdPartyServices { get; set; }
+        public string[] ThirdPartyServiceId { get; set; }
 
+        /// <summary>Monitors this one depends on; alerts are suppressed while they are down.</summary>
         [Parameter]
-        [Alias("dependency_resource_ids")]
-        public string[] DependencyResourceIds { get; set; }
+        public string[] DependencyResourceId { get; set; }
 
         protected override string ResourcePath => Endpoints.Monitors;
         protected override string ResourceLabel => "monitor";
@@ -109,29 +116,12 @@ namespace Site24x7.Cmdlets
             AddIfBound(body, "location_profile_id", nameof(LocationProfileId), LocationProfileId);
             AddIfBound(body, "notification_profile_id", nameof(NotificationProfileId), NotificationProfileId);
             AddIfBound(body, "threshold_profile_id", nameof(ThresholdProfileId), ThresholdProfileId);
-            AddIfBound(body, "user_group_ids", nameof(UserGroupIds), UserGroupIds);
-            AddIfBound(body, "monitor_groups", nameof(MonitorGroups), MonitorGroups);
-            AddIfBound(body, "tag_ids", nameof(TagIds), TagIds);
+            AddIfBound(body, "user_group_ids", nameof(UserGroupId), UserGroupId);
+            AddIfBound(body, "monitor_groups", nameof(MonitorGroupId), MonitorGroupId);
+            AddIfBound(body, "tag_ids", nameof(TagId), TagId);
             AddIfBound(body, "on_call_schedule_id", nameof(OnCallScheduleId), OnCallScheduleId);
-            AddIfBound(body, "third_party_services", nameof(ThirdPartyServices), ThirdPartyServices);
-            AddIfBound(body, "dependency_resource_ids", nameof(DependencyResourceIds), DependencyResourceIds);
-        }
-
-        /// <summary>Sets a field to a default when the caller did not supply it in any form.</summary>
-        protected void Default(IDictionary body, string field, string parameterName, object value)
-        {
-            if (!IsBound(parameterName) && !body.Contains(field) && (Property == null || !Property.ContainsKey(field)))
-            {
-                body[field] = value;
-            }
-        }
-
-        /// <summary>Converts @{ 'X-Name' = 'value' } into the API's [{ name, value }] list.</summary>
-        protected static object[] ToNameValueList(IDictionary headers)
-        {
-            return headers?.Cast<DictionaryEntry>()
-                .Select(e => (object)new Hashtable { { "name", Convert.ToString(e.Key) }, { "value", Convert.ToString(e.Value) } })
-                .ToArray();
+            AddIfBound(body, "third_party_services", nameof(ThirdPartyServiceId), ThirdPartyServiceId);
+            AddIfBound(body, "dependency_resource_ids", nameof(DependencyResourceId), DependencyResourceId);
         }
     }
 
@@ -140,14 +130,14 @@ namespace Site24x7.Cmdlets
     /// <para type="description">Pass the monitor type and its type-specific fields in -Property, using the field names from the Monitor Parameters section of the Site24x7 API documentation. For common types, the dedicated cmdlets (New-Site24x7WebsiteMonitor and others) are easier.</para>
     /// </summary>
     /// <example>
-    /// <code>New-Site24x7Monitor -Type URL -DisplayName 'Home page' -Property @{ website = 'https://example.com'; http_method = 'G'; timeout = 30; check_frequency = '5' }</code>
+    /// <code>New-Site24x7Monitor -Type SSL_CERT -DisplayName 'example.com cert' -Property @{ domain_name = 'example.com'; port = 443; expire_days = 21 }</code>
     /// </example>
     [Cmdlet(VerbsCommon.New, "Site24x7Monitor", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7MonitorCommand : MonitorWriteCmdlet
     {
+        /// <summary>The monitor's name.</summary>
         [Parameter(Mandatory = true)]
-        [Alias("display_name")]
         [ValidateNotNullOrEmpty]
         public override string DisplayName { get; set; }
 
@@ -161,28 +151,22 @@ namespace Site24x7.Cmdlets
             body["type"] = Type;
             base.BuildBody(body);
         }
-
-        protected override void ProcessRecordCore()
-        {
-            var body = CreateBody();
-            if (ShouldProcess(Describe(body, ResourceLabel), "Create monitor"))
-            {
-                WriteData(Call("POST", ResourcePath, body));
-            }
-        }
     }
 
     /// <summary>
     /// <para type="synopsis">Updates a monitor.</para>
     /// <para type="description">Only the settings you pass are sent. Site24x7 requires some monitor types to be updated with their full definition; if an update is rejected for missing fields, add -MergeWithCurrent to send the current definition with your changes applied.</para>
     /// </summary>
+    /// <example>
+    /// <code>Set-Site24x7Monitor 123 -CheckFrequency 1</code>
+    /// </example>
     [Cmdlet(VerbsCommon.Set, "Site24x7Monitor", SupportsShouldProcess = true)]
-    [Alias("Update-Site24x7Monitor")]
     [OutputType(typeof(PSObject))]
     public sealed class SetSite24x7MonitorCommand : MonitorWriteCmdlet
     {
+        /// <summary>The monitor's id.</summary>
         [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("monitor_id", "Id")]
+        [Alias("monitor_id")]
         [ValidateNotNullOrEmpty]
         public string MonitorId { get; set; }
 
@@ -192,34 +176,20 @@ namespace Site24x7.Cmdlets
 
         protected override string ResourceId => MonitorId;
 
-        protected override void ProcessRecordCore()
+        protected override IDictionary PrepareUpdate(IDictionary changes)
         {
-            var changes = CreateBody();
-            if (changes.Count == 0)
-            {
-                throw new Site24x7Exception($"Nothing to update on monitor {MonitorId}. Pass at least one setting or -Property.");
-            }
+            if (!MergeWithCurrent) return changes;
 
-            IDictionary body = changes;
-            if (MergeWithCurrent)
+            var body = NewBody();
+            if (Call("GET", ItemPath) is PSObject current)
             {
-                var current = Call("GET", ItemPath) as PSObject;
-                body = NewBody();
-                if (current != null)
+                foreach (var p in current.Properties)
                 {
-                    foreach (var p in current.Properties)
-                    {
-                        if (p.Name == "monitor_id") continue;
-                        body[p.Name] = p.Value;
-                    }
+                    if (p.Name != "monitor_id") body[p.Name] = p.Value;
                 }
-                Merge(body, changes);
             }
-
-            if (ShouldProcess(MonitorId, "Update monitor"))
-            {
-                WriteData(Call("PUT", ItemPath, body));
-            }
+            Merge(body, changes);
+            return body;
         }
     }
 
@@ -229,8 +199,9 @@ namespace Site24x7.Cmdlets
     [Cmdlet(VerbsCommon.Remove, "Site24x7Monitor", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7MonitorCommand : RemoveResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("monitor_id", "Id")]
+        /// <summary>The monitor's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("monitor_id")]
         [ValidateNotNullOrEmpty]
         public string MonitorId { get; set; }
 
@@ -239,52 +210,55 @@ namespace Site24x7.Cmdlets
         protected override string ResourceLabel => "monitor";
     }
 
-    /// <summary>
-    /// <para type="synopsis">Activates (resumes) a suspended monitor.</para>
-    /// </summary>
-    [Cmdlet(VerbsLifecycle.Enable, "Site24x7Monitor", SupportsShouldProcess = true)]
-    [OutputType(typeof(PSObject))]
-    public sealed class EnableSite24x7MonitorCommand : ResourceCmdlet
+    /// <summary>Enable- and Disable-Site24x7Monitor: PUT {path}/{id} with no body.</summary>
+    public abstract class MonitorStateCmdlet : ResourceCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("monitor_id", "Id")]
+        /// <summary>The monitor's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("monitor_id")]
         [ValidateNotNullOrEmpty]
         public string MonitorId { get; set; }
 
-        protected override string ResourcePath => Endpoints.MonitorActivate;
         protected override string ResourceId => MonitorId;
+        protected override string ResourceLabel => "monitor";
+        protected override string OutputTypeName => null;
+
+        /// <summary>The ShouldProcess action, for example "Suspend monitor".</summary>
+        protected abstract string Action { get; }
 
         protected override void ProcessRecordCore()
         {
-            if (ShouldProcess(MonitorId, "Activate monitor"))
+            var path = ItemPath;
+            if (ShouldProcess(MonitorId, Action))
             {
-                WriteData(Call("PUT", ItemPath));
+                WriteData(Call("PUT", path));
             }
         }
     }
 
     /// <summary>
+    /// <para type="synopsis">Activates (resumes) a suspended monitor.</para>
+    /// </summary>
+    [Cmdlet(VerbsLifecycle.Enable, "Site24x7Monitor", SupportsShouldProcess = true)]
+    [OutputType(typeof(PSObject))]
+    public sealed class EnableSite24x7MonitorCommand : MonitorStateCmdlet
+    {
+        protected override string ResourcePath => Endpoints.MonitorActivate;
+        protected override string Action => "Activate monitor";
+    }
+
+    /// <summary>
     /// <para type="synopsis">Suspends a monitor.</para>
     /// </summary>
+    /// <example>
+    /// <code>Get-Site24x7Monitor -Name 'web-*' | Disable-Site24x7Monitor</code>
+    /// </example>
     [Cmdlet(VerbsLifecycle.Disable, "Site24x7Monitor", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
-    public sealed class DisableSite24x7MonitorCommand : ResourceCmdlet
+    public sealed class DisableSite24x7MonitorCommand : MonitorStateCmdlet
     {
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Alias("monitor_id", "Id")]
-        [ValidateNotNullOrEmpty]
-        public string MonitorId { get; set; }
-
         protected override string ResourcePath => Endpoints.MonitorSuspend;
-        protected override string ResourceId => MonitorId;
-
-        protected override void ProcessRecordCore()
-        {
-            if (ShouldProcess(MonitorId, "Suspend monitor"))
-            {
-                WriteData(Call("PUT", ItemPath));
-            }
-        }
+        protected override string Action => "Suspend monitor";
     }
 
     /// <summary>

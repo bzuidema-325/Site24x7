@@ -128,4 +128,93 @@ namespace Site24x7
         Last1Year = 4,
         Custom = 50,
     }
+
+    /// <summary>HTTP methods for Website and REST API monitors.</summary>
+    public enum MonitorHttpMethod
+    {
+        Get,
+        Post,
+        Head,
+        Put,
+        Patch,
+        Delete,
+    }
+
+    /// <summary>HTTP methods a webhook integration can use.</summary>
+    public enum WebhookMethod
+    {
+        Get,
+        Post,
+        Put,
+        Delete,
+    }
+
+    /// <summary>DNS record types, by their DNS type number.</summary>
+    public enum DnsLookupType
+    {
+        A = 1,
+        NS = 2,
+        CNAME = 5,
+        SOA = 6,
+        PTR = 12,
+        MX = 15,
+        TXT = 16,
+        AAAA = 28,
+        SRV = 33,
+        DS = 43,
+        DNSKEY = 48,
+        CAA = 257,
+    }
+
+    /// <summary>The report areas under /reports.</summary>
+    public enum ReportType
+    {
+        Summary,
+        AvailabilitySummary,
+        Performance,
+        Outage,
+        BusyHours,
+        Trend,
+    }
+
+    /// <summary>How enum values are spelled in the API where it does not use numbers.</summary>
+    internal static class ApiCodes
+    {
+        public static string Of(MonitorHttpMethod method)
+        {
+            switch (method)
+            {
+                case MonitorHttpMethod.Post: return "P";
+                case MonitorHttpMethod.Head: return "H";
+                case MonitorHttpMethod.Put: return "PU";
+                case MonitorHttpMethod.Patch: return "PA";
+                case MonitorHttpMethod.Delete: return "D";
+                default: return "G";
+            }
+        }
+
+        public static string Of(WebhookMethod method)
+        {
+            switch (method)
+            {
+                case WebhookMethod.Get: return "G";
+                case WebhookMethod.Put: return "PU";
+                case WebhookMethod.Delete: return "D";
+                default: return "P";
+            }
+        }
+
+        public static string Of(ReportType report)
+        {
+            switch (report)
+            {
+                case ReportType.AvailabilitySummary: return "availability_summary";
+                case ReportType.Performance: return "performance";
+                case ReportType.Outage: return "outage";
+                case ReportType.BusyHours: return "busy_hours";
+                case ReportType.Trend: return "trend";
+                default: return "summary";
+            }
+        }
+    }
 }

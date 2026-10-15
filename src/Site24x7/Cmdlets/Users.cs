@@ -107,8 +107,7 @@ namespace Site24x7.Cmdlets
         [Parameter]
         public CallProvider MobileCallProvider { get; set; }
 
-        protected override string ResourcePath => Endpoints.Users;
-        protected override string ResourceLabel => "user";
+        private protected override ResourceInfo Resource => Resources.User;
 
         protected override void BuildBody(IDictionary body)
         {
@@ -155,24 +154,6 @@ namespace Site24x7.Cmdlets
     }
 
     /// <summary>
-    /// <para type="synopsis">Gets users.</para>
-    /// </summary>
-    [Cmdlet(VerbsCommon.Get, "Site24x7User", DefaultParameterSetName = ParameterSets.List)]
-    [OutputType(typeof(PSObject))]
-    public sealed class GetSite24x7UserCommand : GetResourceCmdlet
-    {
-        /// <summary>The user's id.</summary>
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
-        [Alias("user_id")]
-        [ValidateNotNullOrEmpty]
-        public string UserId { get; set; }
-
-        protected override string ResourcePath => Endpoints.Users;
-        protected override string ResourceId => UserId;
-        protected override string ResourceLabel => "user";
-    }
-
-    /// <summary>
     /// <para type="synopsis">Creates (invites) a user.</para>
     /// </summary>
     /// <example>
@@ -207,23 +188,6 @@ namespace Site24x7.Cmdlets
         protected override string ResourceId => UserId;
     }
 
-    /// <summary>
-    /// <para type="synopsis">Deletes a user.</para>
-    /// </summary>
-    [Cmdlet(VerbsCommon.Remove, "Site24x7User", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
-    public sealed class RemoveSite24x7UserCommand : RemoveResourceCmdlet
-    {
-        /// <summary>The user's id.</summary>
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("user_id")]
-        [ValidateNotNullOrEmpty]
-        public string UserId { get; set; }
-
-        protected override string ResourcePath => Endpoints.Users;
-        protected override string ResourceId => UserId;
-        protected override string ResourceLabel => "user";
-    }
-
     // https://www.site24x7.com/help/api/#user-groups
 
     /// <summary>Settings shared by New-Site24x7UserGroup and Set-Site24x7UserGroup.</summary>
@@ -246,8 +210,7 @@ namespace Site24x7.Cmdlets
         [Parameter]
         public string AttributeGroupId { get; set; }
 
-        protected override string ResourcePath => Endpoints.UserGroups;
-        protected override string ResourceLabel => "user group";
+        private protected override ResourceInfo Resource => Resources.UserGroup;
 
         protected override void BuildBody(IDictionary body)
         {
@@ -256,24 +219,6 @@ namespace Site24x7.Cmdlets
             AddIfBound(body, "product_id", nameof(ProductId), ProductId);
             AddIfBound(body, "attribute_group_id", nameof(AttributeGroupId), AttributeGroupId);
         }
-    }
-
-    /// <summary>
-    /// <para type="synopsis">Gets user groups.</para>
-    /// </summary>
-    [Cmdlet(VerbsCommon.Get, "Site24x7UserGroup", DefaultParameterSetName = ParameterSets.List)]
-    [OutputType(typeof(PSObject))]
-    public sealed class GetSite24x7UserGroupCommand : GetResourceCmdlet
-    {
-        /// <summary>The user group's id.</summary>
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
-        [Alias("user_group_id")]
-        [ValidateNotNullOrEmpty]
-        public string UserGroupId { get; set; }
-
-        protected override string ResourcePath => Endpoints.UserGroups;
-        protected override string ResourceId => UserGroupId;
-        protected override string ResourceLabel => "user group";
     }
 
     /// <summary>
@@ -304,20 +249,4 @@ namespace Site24x7.Cmdlets
         protected override string ResourceId => UserGroupId;
     }
 
-    /// <summary>
-    /// <para type="synopsis">Deletes a user group.</para>
-    /// </summary>
-    [Cmdlet(VerbsCommon.Remove, "Site24x7UserGroup", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
-    public sealed class RemoveSite24x7UserGroupCommand : RemoveResourceCmdlet
-    {
-        /// <summary>The user group's id.</summary>
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("user_group_id")]
-        [ValidateNotNullOrEmpty]
-        public string UserGroupId { get; set; }
-
-        protected override string ResourcePath => Endpoints.UserGroups;
-        protected override string ResourceId => UserGroupId;
-        protected override string ResourceLabel => "user group";
-    }
 }

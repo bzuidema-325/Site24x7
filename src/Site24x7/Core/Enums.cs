@@ -70,24 +70,6 @@ namespace Site24x7
         Twilio = 1,
     }
 
-    public enum MonitorStatus
-    {
-        Down = 0,
-        Up = 1,
-        Trouble = 2,
-        Suspended = 5,
-        Maintenance = 7,
-        Discovery = 9,
-        DiscoveryError = 10,
-    }
-
-    public enum AlertingStatus
-    {
-        Down = 10,
-        Trouble = 20,
-        Up = 30,
-    }
-
     /// <summary>Which resources a maintenance window, report or action applies to.</summary>
     public enum SelectionType
     {

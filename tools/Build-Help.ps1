@@ -145,7 +145,7 @@ foreach ($c in ($module.ExportedCmdlets.Values | Sort-Object Name)) {
         $pos = if ($first.Position -ge 0) { [string]$first.Position } else { 'named' }
         $required = [bool](@($setInfo) | Where-Object IsMandatory)
         $text = Get-ParameterDoc $type $name
-        if (-not $text -and $name -notin 'Session', 'Property', 'PassThru', 'Name', 'Query') { $missing.Add("$($c.Name) -$name") }
+        if (-not $text) { $missing.Add("$($c.Name) -$name") }
         Write-ParameterElement $first $pos $required $true $type
     }
     $w.WriteEndElement()
@@ -174,6 +174,7 @@ $w.WriteEndDocument()
 $w.Dispose()
 
 Write-Verbose "Wrote help for $($module.ExportedCmdlets.Count) cmdlets to $OutFile"
+# Every parameter must have a description: the README promises Get-Help documents all of them.
 if ($missing.Count) {
-    Write-Verbose ("Undocumented: " + ($missing -join '; '))
+    throw "These parameters have no description; add a /// <summary> to each: $($missing -join '; ')"
 }

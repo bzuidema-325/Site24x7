@@ -4,6 +4,7 @@ using System.Management.Automation;
 namespace Site24x7.Cmdlets
 {
     // https://www.site24x7.com/help/api/#monitor-groups
+    // Get- and Remove-Site24x7MonitorGroup and Get- and Remove-Site24x7Subgroup are generated.
 
     /// <summary>Settings shared by monitor groups and subgroups.</summary>
     public abstract class GroupWriteCmdlet : WriteResourceCmdlet
@@ -42,9 +43,9 @@ namespace Site24x7.Cmdlets
         [Parameter]
         public string OnCallScheduleId { get; set; }
 
-        /// <summary>Third-party integrations to alert.</summary>
+        /// <summary>Third-party integrations to alert. See Get-Site24x7Integration.</summary>
         [Parameter]
-        public string[] ThirdPartyServiceId { get; set; }
+        public string[] IntegrationId { get; set; }
 
         /// <summary>The API's group type number.</summary>
         [Parameter]
@@ -64,7 +65,7 @@ namespace Site24x7.Cmdlets
             AddIfBound(body, "notification_profile_id", nameof(NotificationProfileId), NotificationProfileId);
             AddIfBound(body, "user_group_ids", nameof(UserGroupId), UserGroupId);
             AddIfBound(body, "on_call_schedule_id", nameof(OnCallScheduleId), OnCallScheduleId);
-            AddIfBound(body, "third_party_services", nameof(ThirdPartyServiceId), ThirdPartyServiceId);
+            AddIfBound(body, "third_party_services", nameof(IntegrationId), IntegrationId);
             AddIfBound(body, "group_type", nameof(GroupType), GroupType);
             AddIfBound(body, "tag_ids", nameof(TagId), TagId);
         }
@@ -81,9 +82,7 @@ namespace Site24x7.Cmdlets
         [Parameter]
         public SwitchParameter SuppressAlert { get; set; }
 
-        protected override string ResourcePath => Endpoints.MonitorGroups;
-        protected override string ApiVersion => "2.1";
-        protected override string ResourceLabel => "monitor group";
+        private protected override ResourceInfo Resource => Resources.MonitorGroup;
 
         protected override void BuildBody(IDictionary body)
         {
@@ -94,33 +93,14 @@ namespace Site24x7.Cmdlets
     }
 
     /// <summary>
-    /// <para type="synopsis">Gets monitor groups.</para>
-    /// </summary>
-    [Cmdlet(VerbsCommon.Get, "Site24x7Group", DefaultParameterSetName = ParameterSets.List)]
-    [OutputType(typeof(PSObject))]
-    public sealed class GetSite24x7GroupCommand : GetResourceCmdlet
-    {
-        /// <summary>The monitor group's id.</summary>
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
-        [Alias("group_id")]
-        [ValidateNotNullOrEmpty]
-        public string GroupId { get; set; }
-
-        protected override string ResourcePath => Endpoints.MonitorGroups;
-        protected override string ResourceId => GroupId;
-        protected override string ApiVersion => "2.1";
-        protected override string ResourceLabel => "monitor group";
-    }
-
-    /// <summary>
     /// <para type="synopsis">Creates a monitor group.</para>
     /// </summary>
     /// <example>
-    /// <code>New-Site24x7Group 'Web servers' -MonitorId 1001, 1002 -HealthThresholdCount 1</code>
+    /// <code>New-Site24x7MonitorGroup 'Web servers' -MonitorId 1001, 1002 -HealthThresholdCount 1</code>
     /// </example>
-    [Cmdlet(VerbsCommon.New, "Site24x7Group", SupportsShouldProcess = true)]
+    [Cmdlet(VerbsCommon.New, "Site24x7MonitorGroup", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
-    public sealed class NewSite24x7GroupCommand : MonitorGroupWriteCmdlet
+    public sealed class NewSite24x7MonitorGroupCommand : MonitorGroupWriteCmdlet
     {
         /// <summary>The group's name.</summary>
         [Parameter(Mandatory = true, Position = 0)]
@@ -131,53 +111,35 @@ namespace Site24x7.Cmdlets
     /// <summary>
     /// <para type="synopsis">Updates a monitor group. Only the settings you pass are sent.</para>
     /// </summary>
-    [Cmdlet(VerbsCommon.Set, "Site24x7Group", SupportsShouldProcess = true)]
+    [Cmdlet(VerbsCommon.Set, "Site24x7MonitorGroup", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
-    public sealed class SetSite24x7GroupCommand : MonitorGroupWriteCmdlet
+    public sealed class SetSite24x7MonitorGroupCommand : MonitorGroupWriteCmdlet
     {
         /// <summary>The monitor group's id.</summary>
         [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
         [Alias("group_id")]
         [ValidateNotNullOrEmpty]
-        public string GroupId { get; set; }
+        public string MonitorGroupId { get; set; }
 
-        protected override string ResourceId => GroupId;
-    }
-
-    /// <summary>
-    /// <para type="synopsis">Deletes a monitor group. Its monitors are not deleted.</para>
-    /// </summary>
-    [Cmdlet(VerbsCommon.Remove, "Site24x7Group", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
-    public sealed class RemoveSite24x7GroupCommand : RemoveResourceCmdlet
-    {
-        /// <summary>The monitor group's id.</summary>
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("group_id")]
-        [ValidateNotNullOrEmpty]
-        public string GroupId { get; set; }
-
-        protected override string ResourcePath => Endpoints.MonitorGroups;
-        protected override string ResourceId => GroupId;
-        protected override string ApiVersion => "2.1";
-        protected override string ResourceLabel => "monitor group";
+        protected override string ResourceId => MonitorGroupId;
     }
 
     /// <summary>
     /// <para type="synopsis">Adds monitors to a monitor group, by id or by name.</para>
-    /// <para type="description">Unlike Set-Site24x7Group -MonitorId, this keeps the group's current members.</para>
+    /// <para type="description">Unlike Set-Site24x7MonitorGroup -MonitorId, this keeps the group's current members.</para>
     /// </summary>
     /// <example>
-    /// <code>Add-Site24x7GroupMonitor -GroupName 'Web servers' -MonitorName web01, web02</code>
+    /// <code>Add-Site24x7MonitorGroupMember -MonitorGroupName 'Web servers' -MonitorName web01, web02</code>
     /// </example>
-    [Cmdlet(VerbsCommon.Add, "Site24x7GroupMonitor", SupportsShouldProcess = true, DefaultParameterSetName = ParameterSets.ById)]
+    [Cmdlet(VerbsCommon.Add, "Site24x7MonitorGroupMember", SupportsShouldProcess = true, DefaultParameterSetName = ParameterSets.ById)]
     [OutputType(typeof(PSObject))]
-    public sealed class AddSite24x7GroupMonitorCommand : Site24x7Cmdlet
+    public sealed class AddSite24x7MonitorGroupMemberCommand : Site24x7Cmdlet
     {
         /// <summary>The monitor group's id.</summary>
         [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
         [Alias("group_id")]
         [ValidateNotNullOrEmpty]
-        public string GroupId { get; set; }
+        public string MonitorGroupId { get; set; }
 
         /// <summary>The ids of the monitors to add.</summary>
         [Parameter(Mandatory = true, Position = 1, ParameterSetName = ParameterSets.ById)]
@@ -187,30 +149,30 @@ namespace Site24x7.Cmdlets
         /// <summary>The monitor group's name.</summary>
         [Parameter(Mandatory = true, ParameterSetName = ParameterSets.ByName)]
         [ValidateNotNullOrEmpty]
-        public string GroupName { get; set; }
+        public string MonitorGroupName { get; set; }
 
         /// <summary>The names of the monitors to add.</summary>
         [Parameter(Mandatory = true, ParameterSetName = ParameterSets.ByName)]
         [ValidateNotNullOrEmpty]
         public string[] MonitorName { get; set; }
 
-        protected override object ErrorTarget => GroupId ?? GroupName;
+        protected override object ErrorTarget => MonitorGroupId ?? MonitorGroupName;
 
         protected override void ProcessRecordCore()
         {
             var body = NewBody();
             if (ParameterSetName == ParameterSets.ById)
             {
-                body["group_id"] = GroupId;
+                body["group_id"] = MonitorGroupId;
                 body["monitor_ids"] = MonitorId;
             }
             else
             {
-                body["group_name"] = GroupName;
+                body["group_name"] = MonitorGroupName;
                 body["monitor_names"] = MonitorName;
             }
 
-            if (ShouldProcess(GroupId ?? GroupName, "Add monitors to group"))
+            if (ShouldProcess(MonitorGroupId ?? MonitorGroupName, "Add monitors to monitor group"))
             {
                 WriteData(Call("PUT", Endpoints.MonitorGroupAddMonitors, body));
             }
@@ -232,8 +194,7 @@ namespace Site24x7.Cmdlets
         [ValidateNotNullOrEmpty]
         public virtual string ParentGroupId { get; set; }
 
-        protected override string ResourcePath => Endpoints.Subgroups;
-        protected override string ResourceLabel => "subgroup";
+        private protected override ResourceInfo Resource => Resources.Subgroup;
 
         protected override void BuildBody(IDictionary body)
         {
@@ -241,24 +202,6 @@ namespace Site24x7.Cmdlets
             AddIfBound(body, "top_group_id", nameof(TopGroupId), TopGroupId);
             AddIfBound(body, "parent_group_id", nameof(ParentGroupId), ParentGroupId);
         }
-    }
-
-    /// <summary>
-    /// <para type="synopsis">Gets subgroups.</para>
-    /// </summary>
-    [Cmdlet(VerbsCommon.Get, "Site24x7Subgroup", DefaultParameterSetName = ParameterSets.List)]
-    [OutputType(typeof(PSObject))]
-    public sealed class GetSite24x7SubgroupCommand : GetResourceCmdlet
-    {
-        /// <summary>The subgroup's id.</summary>
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
-        [Alias("group_id")]
-        [ValidateNotNullOrEmpty]
-        public string SubgroupId { get; set; }
-
-        protected override string ResourcePath => Endpoints.Subgroups;
-        protected override string ResourceId => SubgroupId;
-        protected override string ResourceLabel => "subgroup";
     }
 
     /// <summary>
@@ -300,20 +243,4 @@ namespace Site24x7.Cmdlets
         protected override string ResourceId => SubgroupId;
     }
 
-    /// <summary>
-    /// <para type="synopsis">Deletes a subgroup.</para>
-    /// </summary>
-    [Cmdlet(VerbsCommon.Remove, "Site24x7Subgroup", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
-    public sealed class RemoveSite24x7SubgroupCommand : RemoveResourceCmdlet
-    {
-        /// <summary>The subgroup's id.</summary>
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("group_id")]
-        [ValidateNotNullOrEmpty]
-        public string SubgroupId { get; set; }
-
-        protected override string ResourcePath => Endpoints.Subgroups;
-        protected override string ResourceId => SubgroupId;
-        protected override string ResourceLabel => "subgroup";
-    }
 }

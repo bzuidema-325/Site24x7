@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Globalization;
 using System.Management.Automation;
+using System.Security;
 using System.Text;
 
 namespace Site24x7
@@ -19,8 +20,11 @@ namespace Site24x7
         /// <summary>The deepest nesting the reader and writer accept. Deeper input would exhaust the stack.</summary>
         public const int MaxDepth = 100;
 
-        /// <param name="value">A hashtable, PSCustomObject, array or scalar.</param>
-        /// <param name="redactSecrets">Replace the values of password, secret and token fields with "***", for logging.</param>
+        /// <param name="value">A hashtable, PSCustomObject, array or scalar. A SecureString is sent as its plain text.</param>
+        /// <param name="redactSecrets">
+        /// For logging: replace secrets with "***". That covers fields named like passwords, secrets,
+        /// tokens and keys, the value of a {name, value} pair naming a sensitive header, and SecureStrings.
+        /// </param>
         public static string Serialize(object value, bool redactSecrets = false)
         {
             var sb = new StringBuilder();
@@ -28,19 +32,54 @@ namespace Site24x7
             return sb.ToString();
         }
 
-        private static bool IsSecretField(string name)
+        /// <summary>
+        /// JSON text with its secrets replaced, for logging. Text that is not JSON is not shown,
+        /// because there is no telling what it contains.
+        /// </summary>
+        public static string Redact(string text)
         {
-            var n = name.ToLowerInvariant();
-            return n.Contains("password") || n.Contains("secret") || n.Contains("token") || n == "auth_pass";
+            if (string.IsNullOrWhiteSpace(text)) return text ?? string.Empty;
+            try
+            {
+                return Serialize(Parse(text), redactSecrets: true);
+            }
+            catch (FormatException)
+            {
+                return $"<{text.Length} characters that are not JSON, not shown>";
+            }
         }
 
-        private static void WriteMember(StringBuilder sb, string name, object value, int depth, bool redact)
+        internal static bool IsSecretField(string name)
+        {
+            var n = name.ToLowerInvariant();
+            return n.Contains("password") || n.Contains("passphrase") || n.Contains("secret") || n.Contains("token") ||
+                   n.Contains("credential") || n.Contains("authorization") || n == "auth_pass" ||
+                   n == "key" || n.EndsWith("_key", StringComparison.Ordinal) || n.EndsWith("apikey", StringComparison.Ordinal);
+        }
+
+        /// <summary>Header names whose values are credentials, as sent in custom_headers and similar {name, value} lists.</summary>
+        internal static bool IsSecretHeader(string name)
+        {
+            var n = name.Trim().ToLowerInvariant().Replace('_', '-');
+            return n == "cookie" || n == "set-cookie" || n.Contains("authorization") || n.Contains("api-key") || n.Contains("apikey") ||
+                   IsSecretField(n);
+        }
+
+        private static void WriteMember(StringBuilder sb, string name, object value, int depth, bool redact, bool secretPair)
         {
             WriteString(sb, name);
             sb.Append(':');
-            if (redact && value != null && IsSecretField(name)) WriteString(sb, "***");
+            bool hide = redact && value != null &&
+                (IsSecretField(name) || (secretPair && string.Equals(name, "value", StringComparison.OrdinalIgnoreCase)));
+            if (hide) WriteString(sb, "***");
             else Write(sb, value, depth + 1, redact);
         }
+
+        /// <summary>True when an object is a {name, value} pair whose name is a sensitive header.</summary>
+        private static bool IsSecretPair(object nameValue) =>
+            nameValue is string headerName && IsSecretHeader(headerName);
+
+        private static object Unwrap(object value) => value is PSObject pso && !(pso.BaseObject is PSCustomObject) ? pso.BaseObject : value;
 
         private static void Write(StringBuilder sb, object value, int depth, bool redact)
         {
@@ -55,12 +94,13 @@ namespace Site24x7
                 {
                     sb.Append('{');
                     bool first = true;
+                    bool secretPair = redact && IsSecretPair(Unwrap(pso.Properties["name"]?.Value));
                     foreach (var prop in pso.Properties)
                     {
                         if (!(prop is PSNoteProperty) && !(prop is PSProperty)) continue;
                         if (!first) sb.Append(',');
                         first = false;
-                        WriteMember(sb, prop.Name, prop.Value, depth, redact);
+                        WriteMember(sb, prop.Name, prop.Value, depth, redact, secretPair);
                     }
                     sb.Append('}');
                     return;
@@ -75,6 +115,9 @@ namespace Site24x7
                     return;
                 case string s:
                     WriteString(sb, s);
+                    return;
+                case SecureString secure:
+                    WriteString(sb, redact ? "***" : Secrets.ToPlain(secure));
                     return;
                 case char c:
                     WriteString(sb, c.ToString());
@@ -114,11 +157,22 @@ namespace Site24x7
                 {
                     sb.Append('{');
                     bool first = true;
+                    bool secretPair = false;
+                    if (redact)
+                    {
+                        foreach (DictionaryEntry entry in dict)
+                        {
+                            if (string.Equals(Convert.ToString(entry.Key, CultureInfo.InvariantCulture), "name", StringComparison.OrdinalIgnoreCase))
+                            {
+                                secretPair = IsSecretPair(Unwrap(entry.Value));
+                            }
+                        }
+                    }
                     foreach (DictionaryEntry entry in dict)
                     {
                         if (!first) sb.Append(',');
                         first = false;
-                        WriteMember(sb, Convert.ToString(entry.Key, CultureInfo.InvariantCulture), entry.Value, depth, redact);
+                        WriteMember(sb, Convert.ToString(entry.Key, CultureInfo.InvariantCulture), entry.Value, depth, redact, secretPair);
                     }
                     sb.Append('}');
                     return;

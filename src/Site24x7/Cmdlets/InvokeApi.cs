@@ -6,7 +6,7 @@ namespace Site24x7.Cmdlets
 {
     /// <summary>
     /// <para type="synopsis">Calls any Site24x7 API endpoint with the current session.</para>
-    /// <para type="description">Use this for endpoints that have no dedicated cmdlet. -Endpoint is relative to the API root of your data center, for example "monitors" or "reports/summary/123". A full URL is accepted only inside the session's own API root, so the access token is never sent anywhere else.</para>
+    /// <para type="description">Use this for endpoints that have no dedicated cmdlet. -Endpoint is relative to the API root of your data center, for example "monitors" or "reports/summary/123". Full URLs, backslashes, and paths that would leave the API root (such as "../") are refused, so the access token is never sent anywhere else.</para>
     /// </summary>
     /// <example>
     /// <code>Invoke-Site24x7Api GET 'monitors' -Query @{ type = 'URL' }</code>
@@ -23,7 +23,7 @@ namespace Site24x7.Cmdlets
         [ValidateSet("GET", "POST", "PUT", "PATCH", "DELETE", IgnoreCase = true)]
         public string Method { get; set; } = "GET";
 
-        /// <summary>The endpoint path relative to the API root, for example "monitors/123".</summary>
+        /// <summary>The endpoint path relative to the API root, for example "monitors/123". Full URLs are not accepted.</summary>
         [Parameter(Mandatory = true, Position = 1)]
         [ValidateNotNullOrEmpty]
         public string Endpoint { get; set; }
@@ -32,6 +32,7 @@ namespace Site24x7.Cmdlets
         [Parameter(ValueFromPipeline = true)]
         public object Body { get; set; }
 
+        /// <summary>Query string parameters, for example @{ type = 'URL' }. Values can be strings, numbers, dates or lists.</summary>
         [Parameter]
         public Hashtable Query { get; set; }
 
@@ -40,7 +41,7 @@ namespace Site24x7.Cmdlets
         [ValidatePattern(@"^\d+\.\d+$")]
         public string ApiVersion { get; set; }
 
-        /// <summary>Returns the whole response (code, message and data) instead of only data.</summary>
+        /// <summary>Returns the whole response (code, message and data) instead of only data. A response that is not JSON, such as a CSV export, is returned as text.</summary>
         [Parameter]
         public SwitchParameter Raw { get; set; }
 

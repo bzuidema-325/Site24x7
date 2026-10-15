@@ -8,7 +8,8 @@ using System.Management.Automation.Language;
 namespace Site24x7.Cmdlets
 {
     // https://www.site24x7.com/help/api/#third-party-integrations
-    // Get-Site24x7ThirdPartyIntegration and Remove-Site24x7ThirdPartyIntegration are generated.
+    // Get-Site24x7Integration and Remove-Site24x7Integration are generated and cover every kind,
+    // webhooks included. New- and Set-Site24x7Webhook are typed shortcuts for webhooks.
 
     /// <summary>Settings shared by New-Site24x7Webhook and Set-Site24x7Webhook.</summary>
     public abstract class WebhookWriteCmdlet : WriteResourceCmdlet
@@ -64,8 +65,7 @@ namespace Site24x7.Cmdlets
         [Parameter]
         public string PollerId { get; set; }
 
-        protected override string ResourcePath => Endpoints.Webhooks;
-        protected override string ResourceLabel => "webhook";
+        private protected override ResourceInfo Resource => Resources.Webhook;
 
         protected override void BuildBody(IDictionary body)
         {
@@ -150,34 +150,32 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class SetSite24x7WebhookCommand : WebhookWriteCmdlet
     {
-        /// <summary>The integration's id.</summary>
+        /// <summary>The webhook's integration id.</summary>
         [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
         [Alias("service_id")]
         [ValidateNotNullOrEmpty]
-        public string ServiceId { get; set; }
+        public string IntegrationId { get; set; }
 
-        protected override string ResourceId => ServiceId;
+        protected override string ResourceId => IntegrationId;
     }
 
-    /// <summary>The -Type, ResourcePath and label shared by New- and Set-Site24x7Integration.</summary>
+    /// <summary>The -IntegrationType, path and label shared by New- and Set-Site24x7Integration.</summary>
     public abstract class IntegrationWriteCmdlet : WriteResourceCmdlet
     {
         /// <summary>The integration's path segment under /integration in the Site24x7 API documentation, for example slack, pager_duty, opsgenie or servicenow.</summary>
-        [Parameter(Mandatory = true, Position = 0)]
+        [Parameter(Mandatory = true, Position = 1)]
         [ValidateNotNullOrEmpty]
         [ArgumentCompleter(typeof(IntegrationTypeCompleter))]
-        public string Type { get; set; }
+        public string IntegrationType { get; set; }
 
-        protected override string ResourcePath => Endpoints.IntegrationRoot + "/" + Seg(Type);
-        protected override string ResourceLabel => Type + " integration";
+        /// <summary>The integration's fields, as a hashtable of the API's field names and values.</summary>
+        [Parameter(Mandatory = true)]
+        [ValidateNotNull]
+        public override Hashtable Property { get; set; }
 
-        protected override void ValidateBody(IDictionary body)
-        {
-            if (body.Count == 0)
-            {
-                throw new Site24x7ArgumentException("Pass the integration's settings with -Property.");
-            }
-        }
+        private protected override ResourceInfo Resource => Resources.Integration;
+        protected override string ResourcePath => Endpoints.IntegrationRoot + "/" + Seg(IntegrationType);
+        protected override string ResourceLabel => IntegrationType + " integration";
     }
 
     /// <summary>
@@ -185,7 +183,7 @@ namespace Site24x7.Cmdlets
     /// <para type="description">Pass the integration's fields in -Property, using the field names from the Site24x7 API documentation.</para>
     /// </summary>
     /// <example>
-    /// <code>New-Site24x7Integration slack -Property @{ name = 'Ops channel'; url = $slackHookUrl; selection_type = 0 }</code>
+    /// <code>New-Site24x7Integration -IntegrationType slack -Property @{ name = 'Ops channel'; url = $slackHookUrl; selection_type = 0 }</code>
     /// </example>
     [Cmdlet(VerbsCommon.New, "Site24x7Integration", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
@@ -201,12 +199,12 @@ namespace Site24x7.Cmdlets
     public sealed class SetSite24x7IntegrationCommand : IntegrationWriteCmdlet
     {
         /// <summary>The integration's id.</summary>
-        [Parameter(Mandatory = true, Position = 1, ValueFromPipelineByPropertyName = true)]
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
         [Alias("service_id")]
         [ValidateNotNullOrEmpty]
-        public string ServiceId { get; set; }
+        public string IntegrationId { get; set; }
 
-        protected override string ResourceId => ServiceId;
+        protected override string ResourceId => IntegrationId;
     }
 
     /// <summary>Tab completion for the -Type parameter of the integration cmdlets.</summary>

@@ -18,14 +18,24 @@
       Label       Words used in confirmation prompts and help
       NameField   API field that -Name filters on
       ApiVersion  Accept header version when the area needs one other than 2.0
-      Verbs       Which of Get, New, Set, Remove to generate
+      Verbs       Which of Get, New, Set, Remove to generate. Areas whose New and Set are hand-written
+                  (monitors, monitor groups and others) generate only Get and Remove here.
+      GetPartial  Get-* is a partial class, so a hand-written part can add list filters
+      Description Extra help text for the Get-* cmdlet; Example is a Get-* help example
+      RemoveNote  Extra sentence for the Remove-* synopsis
+      PropertyMandatory  New-* requires -Property, because the area has no typed fields
       ListOnly    Get has no id parameter (the API only lists)
       Fields      Typed body parameters: Name, Json (API field), Type (string, string[], int, switch,
                   credential, or an enum name), Doc, and NewMandatory to make it required on New-*.
                   A credential field sends the user name to Json and the password to PasswordJson.
+                  String parameters never accept an empty value; clear a field with -Property.
       Help        Noun phrase for the Get-* synopsis
 
-    -TableOnly returns the table instead of writing the file; the tests use it.
+    A path marked "// verify" in src/Site24x7/Core/Endpoints.cs has not been checked against a
+    live account yet. The generated help says so; tools/Test-Site24x7Endpoints.ps1 checks them.
+
+    -TableOnly returns the table instead of writing the file; the tests use it. Each row then
+    also carries ApiPath (the path string) and Verified.
 #>
 [CmdletBinding()]
 param(
@@ -37,13 +47,51 @@ param(
 
 $resources = @(
     @{
+        Noun = 'Monitor'; Path = 'Monitors'; Id = 'MonitorId'; IdField = 'monitor_id'
+        Label = 'monitor'; NameField = 'display_name'; Help = 'monitors'
+        Verbs = 'Get', 'Remove'; GetPartial = $true; Fields = @()
+        Description = 'Without -MonitorId, lists every monitor, optionally filtered by -Name (wildcards allowed) and -MonitorType.'
+        Example = "Get-Site24x7Monitor -Name 'web-*' -MonitorType URL"
+    }
+    @{
+        Noun = 'MonitorGroup'; Path = 'MonitorGroups'; Id = 'MonitorGroupId'; IdField = 'group_id'
+        Label = 'monitor group'; NameField = 'display_name'; Help = 'monitor groups'
+        Verbs = 'Get', 'Remove'; ApiVersion = '2.1'; Fields = @()
+        RemoveNote = 'Its monitors are not deleted.'
+    }
+    @{
+        Noun = 'Subgroup'; Path = 'Subgroups'; Id = 'SubgroupId'; IdField = 'group_id'
+        Label = 'subgroup'; NameField = 'display_name'; Help = 'subgroups of monitor groups'
+        Verbs = 'Get', 'Remove'; Fields = @()
+    }
+    @{
+        Noun = 'User'; Path = 'Users'; Id = 'UserId'; IdField = 'user_id'
+        Label = 'user'; NameField = 'display_name'; Help = 'users'
+        Verbs = 'Get', 'Remove'; Fields = @()
+    }
+    @{
+        Noun = 'UserGroup'; Path = 'UserGroups'; Id = 'UserGroupId'; IdField = 'user_group_id'
+        Label = 'user group'; NameField = 'display_name'; Help = 'user groups'
+        Verbs = 'Get', 'Remove'; Fields = @()
+    }
+    @{
+        Noun = 'Maintenance'; Path = 'Maintenance'; Id = 'MaintenanceId'; IdField = 'maintenance_id'
+        Label = 'maintenance window'; NameField = 'display_name'; Help = 'scheduled maintenance windows'
+        Verbs = 'Get', 'Remove'; Fields = @()
+    }
+    @{
+        Noun = 'Integration'; Path = 'ThirdPartyServices'; Id = 'IntegrationId'; IdField = 'service_id'
+        Label = 'integration'; NameField = 'name'; Help = 'third-party integrations (Slack, PagerDuty, webhooks and others)'
+        Verbs = 'Get', 'Remove'; Fields = @()
+    }
+    @{
         Noun = 'ThresholdProfile'; Path = 'ThresholdProfiles'; Id = 'ProfileId'; IdField = 'profile_id'
         Label = 'threshold profile'; NameField = 'profile_name'; Help = 'threshold profiles'
         Verbs = 'Get', 'New', 'Set', 'Remove'
         ApiVersion = '2.1'
         Fields = @(
             @{ Name = 'ProfileName'; Json = 'profile_name'; Type = 'string'; NewMandatory = $true }
-            @{ Name = 'Type'; Json = 'type'; Type = 'string'; NewMandatory = $true; Doc = 'The monitor type the profile applies to, for example URL or SERVER.' }
+            @{ Name = 'MonitorType'; Json = 'type'; Type = 'string'; NewMandatory = $true; Doc = 'The monitor type the profile applies to, for example URL or SERVER.' }
             @{ Name = 'ProfileType'; Json = 'profile_type'; Type = 'int'; Doc = '1 = static thresholds, 2 = AI-based thresholds.' }
             @{ Name = 'DownLocationThreshold'; Json = 'down_location_threshold'; Type = 'int'; Doc = 'How many locations must report down before the monitor is down.' }
             @{ Name = 'WebsiteContentModified'; Json = 'website_content_modified'; Type = 'switch'; Doc = 'Alert when the website content changes.' }
@@ -106,36 +154,36 @@ $resources = @(
         Noun = 'OnCallSchedule'; Path = 'OnCallSchedules'; Id = 'OnCallScheduleId'; IdField = 'on_call_schedule_id'
         Label = 'on-call schedule'; NameField = 'schedule_name'; Help = 'on-call schedules'
         Verbs = 'Get', 'New', 'Set', 'Remove'
-        Fields = @( @{ Name = 'ScheduleName'; Json = 'schedule_name'; Type = 'string' } )
+        Fields = @( @{ Name = 'ScheduleName'; Json = 'schedule_name'; Type = 'string'; NewMandatory = $true } )
     }
     @{
         Noun = 'AttributeAlertGroup'; Path = 'AttributeGroups'; Id = 'AttributeGroupId'; IdField = 'attribute_group_id'
         Label = 'attribute alert group'; NameField = 'display_name'; Help = 'attribute alert groups'
         Verbs = 'Get', 'New', 'Set', 'Remove'
-        Fields = @( @{ Name = 'DisplayName'; Json = 'display_name'; Type = 'string' } )
+        Fields = @( @{ Name = 'DisplayName'; Json = 'display_name'; Type = 'string'; NewMandatory = $true } )
     }
     @{
         Noun = 'EmailTemplate'; Path = 'EmailTemplates'; Id = 'TemplateId'; IdField = 'template_id'
         Label = 'email template'; NameField = 'display_name'; Help = 'email templates'
         Verbs = 'Get', 'New', 'Set', 'Remove'
-        Fields = @( @{ Name = 'DisplayName'; Json = 'display_name'; Type = 'string' } )
+        Fields = @( @{ Name = 'DisplayName'; Json = 'display_name'; Type = 'string'; NewMandatory = $true } )
     }
     @{
         Noun = 'BusinessHours'; Path = 'BusinessHours'; Id = 'BusinessHoursId'; IdField = 'business_hours_id'
         Label = 'business hours'; NameField = 'display_name'; Help = 'business hours definitions'
         Verbs = 'Get', 'New', 'Set', 'Remove'
-        Fields = @( @{ Name = 'DisplayName'; Json = 'display_name'; Type = 'string' } )
+        Fields = @( @{ Name = 'DisplayName'; Json = 'display_name'; Type = 'string'; NewMandatory = $true } )
     }
     @{
         Noun = 'OAuthProvider'; Path = 'OAuthProviders'; Id = 'ProviderId'; IdField = 'provider_id'
         Label = 'OAuth provider'; NameField = 'name'; Help = 'OAuth providers used by REST API monitors'
         Verbs = 'Get', 'New', 'Set', 'Remove'
-        Fields = @( @{ Name = 'ProviderName'; Json = 'name'; Type = 'string' } )
+        Fields = @( @{ Name = 'ProviderName'; Json = 'name'; Type = 'string'; NewMandatory = $true } )
     }
     @{
         Noun = 'WebToken'; Path = 'WebTokens'; Id = 'WebTokenId'; IdField = 'web_token_id'
         Label = 'web token'; NameField = 'name'; Help = 'web tokens'
-        Verbs = 'Get', 'New', 'Set', 'Remove'
+        Verbs = 'Get', 'New', 'Set', 'Remove'; PropertyMandatory = $true
         Fields = @()
     }
     @{
@@ -143,7 +191,7 @@ $resources = @(
         Label = 'global parameter'; NameField = 'name'; Help = 'global parameters'
         Verbs = 'Get', 'New', 'Set', 'Remove'
         Fields = @(
-            @{ Name = 'ParameterName'; Json = 'name'; Type = 'string' }
+            @{ Name = 'ParameterName'; Json = 'name'; Type = 'string'; NewMandatory = $true }
             @{ Name = 'Value'; Json = 'value'; Type = 'string'; Doc = 'The parameter''s value.' }
         )
     }
@@ -162,32 +210,26 @@ $resources = @(
     @{
         Noun = 'ConfigurationRule'; Path = 'ConfigurationRules'; Id = 'RuleId'; IdField = 'rule_id'
         Label = 'configuration rule'; NameField = 'rule_name'; Help = 'configuration rules'
-        Verbs = 'Get', 'New', 'Set', 'Remove'
+        Verbs = 'Get', 'New', 'Set', 'Remove'; PropertyMandatory = $true
         Fields = @()
     }
     @{
         Noun = 'ScheduledReport'; Path = 'ScheduledReports'; Id = 'ReportId'; IdField = 'report_id'
         Label = 'scheduled report'; NameField = 'display_name'; Help = 'scheduled reports'
         Verbs = 'Get', 'New', 'Set', 'Remove'
-        Fields = @( @{ Name = 'DisplayName'; Json = 'display_name'; Type = 'string' } )
+        Fields = @( @{ Name = 'DisplayName'; Json = 'display_name'; Type = 'string'; NewMandatory = $true } )
     }
     @{
         Noun = 'SlaSetting'; Path = 'SlaSettings'; Id = 'SlaId'; IdField = 'sla_id'
         Label = 'SLA setting'; NameField = 'display_name'; Help = 'SLA settings'
         Verbs = 'Get', 'New', 'Set', 'Remove'
-        Fields = @( @{ Name = 'DisplayName'; Json = 'display_name'; Type = 'string' } )
+        Fields = @( @{ Name = 'DisplayName'; Json = 'display_name'; Type = 'string'; NewMandatory = $true } )
     }
     @{
         Noun = 'StatusPage'; Path = 'StatusPages'; Id = 'StatusPageId'; IdField = 'statuspage_id'
         Label = 'status page'; NameField = 'display_name'; Help = 'status pages'
         Verbs = 'Get', 'New', 'Set', 'Remove'
-        Fields = @( @{ Name = 'DisplayName'; Json = 'display_name'; Type = 'string' } )
-    }
-    @{
-        Noun = 'ThirdPartyIntegration'; Path = 'ThirdPartyServices'; Id = 'ServiceId'; IdField = 'service_id'
-        Label = 'third-party integration'; NameField = 'name'; Help = 'third-party integrations (Slack, PagerDuty, webhooks and others)'
-        Verbs = 'Get', 'Remove'
-        Fields = @()
+        Fields = @( @{ Name = 'DisplayName'; Json = 'display_name'; Type = 'string'; NewMandatory = $true } )
     }
     @{
         Noun = 'OnPremisePoller'; Path = 'OnPremisePollers'; Id = 'PollerId'; IdField = 'poller_id'
@@ -232,6 +274,21 @@ $resources = @(
     }
 )
 
+# The API path of each Endpoints constant, and whether it is marked "// verify".
+$endpointsFile = Join-Path $PSScriptRoot '../src/Site24x7/Core/Endpoints.cs'
+$endpoints = @{}
+foreach ($line in Get-Content $endpointsFile) {
+    if ($line -match 'public const string (\w+) = "([^"]*)";(.*)$') {
+        $name, $path, $comment = $Matches[1], $Matches[2], $Matches[3]
+        $endpoints[$name] = @{ Path = $path; Verified = $comment -notmatch '\bverify\b' }
+    }
+}
+foreach ($r in $resources) {
+    if (-not $endpoints.ContainsKey($r.Path)) { throw "Endpoints.$($r.Path) does not exist in $endpointsFile." }
+    $r.ApiPath = $endpoints[$r.Path].Path
+    $r.Verified = $endpoints[$r.Path].Verified
+}
+
 if ($TableOnly) { return $resources }
 
 function Get-CSharpType([string] $type) {
@@ -253,10 +310,22 @@ function Write-Summary([string] $indent, [string] $text) {
     if ($text) { Line "$indent/// <summary>$(ConvertTo-XmlText $text)</summary>" }
 }
 
-function Write-Synopsis([string] $text) {
+# Help for a cmdlet: the synopsis, then any description paragraphs, then examples.
+function Write-Help($r, [string] $synopsis, [string[]] $description = @(), [string[]] $examples = @()) {
+    if (-not $r.Verified) {
+        $description += "The API path this cmdlet calls ($($r.ApiPath)) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it."
+    }
     Line '    /// <summary>'
-    Line "    /// <para type=`"synopsis`">$(ConvertTo-XmlText $text)</para>"
+    Line "    /// <para type=`"synopsis`">$(ConvertTo-XmlText $synopsis)</para>"
+    foreach ($d in $description | Where-Object { $_ }) {
+        Line "    /// <para type=`"description`">$(ConvertTo-XmlText $d)</para>"
+    }
     Line '    /// </summary>'
+    foreach ($e in $examples | Where-Object { $_ }) {
+        Line '    /// <example>'
+        Line "    /// <code>$(ConvertTo-XmlText $e)</code>"
+        Line '    /// </example>'
+    }
 }
 
 # The id parameter: positional, bound by property name from API objects through its IdField alias.
@@ -271,9 +340,7 @@ function Write-IdParameter($r, [string] $parameterSet) {
 }
 
 function Write-Common($r) {
-    Line "        protected override string ResourcePath => Endpoints.$($r.Path);"
-    Line "        protected override string ResourceLabel => `"$($r.Label)`";"
-    if ($r.ApiVersion) { Line "        protected override string ApiVersion => `"$($r.ApiVersion)`";" }
+    Line "        private protected override ResourceInfo Resource => Resources.$($r.Noun);"
 }
 
 function Write-Field($r, $f, [bool] $override) {
@@ -285,7 +352,7 @@ function Write-Field($r, $f, [bool] $override) {
         Line '        [Parameter]'
     }
     if ($f.Type -eq 'credential') { Line '        [Credential]' }
-    elseif ($f.Type -in 'string', 'string[]') { if ($override) { Line '        [ValidateNotNullOrEmpty]' } }
+    elseif ($f.Type -in 'string', 'string[]') { Line '        [ValidateNotNullOrEmpty]' }
     $modifier = if ($override) { 'override ' } elseif ($f.NewMandatory) { 'virtual ' } else { '' }
     Line "        public $modifier$(Get-CSharpType $f.Type) $($f.Name) { get; set; }"
     Line
@@ -299,6 +366,14 @@ Line 'using System.Management.Automation;'
 Line
 Line 'namespace Site24x7.Cmdlets'
 Line '{'
+Line '    internal static partial class Resources'
+Line '    {'
+foreach ($r in $resources) {
+    $version = if ($r.ApiVersion) { ", `"$($r.ApiVersion)`"" } else { '' }
+    Line "        public static readonly ResourceInfo $($r.Noun) = new ResourceInfo(Endpoints.$($r.Path), `"$($r.Label)`"$version);"
+}
+Line '    }'
+Line
 
 foreach ($r in $resources) {
     $noun = $r.Noun
@@ -306,10 +381,11 @@ foreach ($r in $resources) {
     Line
 
     if ($r.Verbs -contains 'Get') {
-        Write-Synopsis "Gets $($r.Help)."
+        Write-Help $r "Gets $($r.Help)." @($r.Description) @($r.Example)
+        $partial = if ($r.GetPartial) { 'partial ' } else { '' }
         Line "    [Cmdlet(VerbsCommon.Get, `"Site24x7$noun`", DefaultParameterSetName = ParameterSets.List)]"
         Line '    [OutputType(typeof(PSObject))]'
-        Line "    public sealed class GetSite24x7${noun}Command : GetResourceCmdlet"
+        Line "    public sealed ${partial}class GetSite24x7${noun}Command : GetResourceCmdlet"
         Line '    {'
         if (-not $r.ListOnly) {
             Write-IdParameter $r 'ParameterSets.ById'
@@ -347,7 +423,8 @@ foreach ($r in $resources) {
     }
 
     if ($r.Verbs -contains 'New') {
-        Write-Synopsis "Creates a $($r.Label). Fields without a parameter can be passed with -Property."
+        $how = if ($r.PropertyMandatory) { "Pass its fields with -Property, using the API's field names." } else { 'Fields without a parameter can be passed with -Property.' }
+        Write-Help $r "Creates a $($r.Label). $how"
         Line "    [Cmdlet(VerbsCommon.New, `"Site24x7$noun`", SupportsShouldProcess = true)]"
         Line '    [OutputType(typeof(PSObject))]'
         Line "    public sealed class NewSite24x7${noun}Command : Site24x7${noun}WriteCmdlet"
@@ -359,13 +436,21 @@ foreach ($r in $resources) {
             [void]$script:sb.Replace('__POS__', "$pos", $before, $script:sb.Length - $before)
             $pos++
         }
+        if ($r.PropertyMandatory) {
+            Write-Summary '        ' "The $($r.Label)'s fields, as a hashtable of the API's field names and values."
+            Line '        [Parameter(Mandatory = true, Position = 0)]'
+            Line '        [ValidateNotNull]'
+            Line '        public override Hashtable Property { get; set; }'
+            Line
+            $pos++
+        }
         if ($pos -gt 0) { $script:sb.Length -= [Environment]::NewLine.Length }
         Line '    }'
         Line
     }
 
     if ($r.Verbs -contains 'Set') {
-        Write-Synopsis "Updates a $($r.Label). Only the settings you pass are sent."
+        Write-Help $r "Updates a $($r.Label). Only the settings you pass are sent."
         Line "    [Cmdlet(VerbsCommon.Set, `"Site24x7$noun`", SupportsShouldProcess = true)]"
         Line '    [OutputType(typeof(PSObject))]'
         Line "    public sealed class SetSite24x7${noun}Command : Site24x7${noun}WriteCmdlet"
@@ -377,7 +462,9 @@ foreach ($r in $resources) {
     }
 
     if ($r.Verbs -contains 'Remove') {
-        Write-Synopsis "Deletes a $($r.Label)."
+        $synopsis = "Deletes a $($r.Label)."
+        if ($r.RemoveNote) { $synopsis += " $($r.RemoveNote)" }
+        Write-Help $r $synopsis
         Line "    [Cmdlet(VerbsCommon.Remove, `"Site24x7$noun`", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]"
         Line "    public sealed class RemoveSite24x7${noun}Command : RemoveResourceCmdlet"
         Line '    {'

@@ -7,27 +7,59 @@ using System.Management.Automation;
 namespace Site24x7.Cmdlets
 {
     /// <summary>Parameter set names shared by the cmdlets.</summary>
-    public static class ParameterSets
+    internal static class ParameterSets
     {
         public const string List = "List";
         public const string ById = "ById";
         public const string ByName = "ByName";
     }
 
+    /// <summary>
+    /// Where a Site24x7 collection lives and how to talk about it. Each resource has one, in
+    /// <see cref="Resources"/>, and every cmdlet for it reads from that one place.
+    /// </summary>
+    internal sealed class ResourceInfo
+    {
+        public ResourceInfo(string path, string label, string apiVersion = null)
+        {
+            Path = path;
+            Label = label;
+            ApiVersion = apiVersion;
+        }
+
+        /// <summary>The collection path relative to the API root, for example "monitor_groups".</summary>
+        public string Path { get; }
+
+        /// <summary>A readable name for confirmation prompts and messages, for example "monitor group".</summary>
+        public string Label { get; }
+
+        /// <summary>The Accept header API version, or null for the default (2.0).</summary>
+        public string ApiVersion { get; }
+    }
+
+    /// <summary>Resources whose cmdlets are all hand-written. The rest are generated into the other part of this class.</summary>
+    internal static partial class Resources
+    {
+        public static readonly ResourceInfo Webhook = new ResourceInfo(Endpoints.Webhooks, "webhook");
+    }
+
     /// <summary>Common shape for a Site24x7 collection such as /monitors or /tags.</summary>
     public abstract class ResourceCmdlet : Site24x7Cmdlet
     {
+        /// <summary>The resource this cmdlet works on.</summary>
+        private protected abstract ResourceInfo Resource { get; }
+
         /// <summary>The collection path relative to the API root, for example "monitor_groups".</summary>
-        protected abstract string ResourcePath { get; }
+        protected virtual string ResourcePath => Resource.Path;
 
         /// <summary>The id of the single resource the cmdlet targets, or null.</summary>
         protected virtual string ResourceId => null;
 
         /// <summary>The Accept header API version. Most areas use 2.0; monitor groups and threshold profiles use 2.1.</summary>
-        protected virtual string ApiVersion => null;
+        protected string ApiVersion => Resource.ApiVersion;
 
         /// <summary>A readable name for confirmation prompts and messages, for example "monitor group".</summary>
-        protected abstract string ResourceLabel { get; }
+        protected virtual string ResourceLabel => Resource.Label;
 
         protected string ItemPath => ResourcePath + "/" + Seg(ResourceId);
 
@@ -79,12 +111,40 @@ namespace Site24x7.Cmdlets
             WriteData(FilterByName(Call("GET", ResourcePath, query: Query, apiVersion: ApiVersion)));
         }
 
+        /// <summary>
+        /// Keeps the items whose name matches -Name: exactly (ignoring case), or as a wildcard pattern.
+        /// An exact match counts first, so a name such as "web [prod]" is found even though [ ] are
+        /// wildcard characters. A plain name that matches nothing is reported as not found.
+        /// </summary>
         protected object[] FilterByName(object data)
         {
             var items = Items(data);
             if (string.IsNullOrEmpty(Name)) return items.ToArray();
-            var pattern = new WildcardPattern(Name, WildcardOptions.IgnoreCase);
-            return items.Where(i => pattern.IsMatch(ItemName(i))).ToArray();
+
+            var exact = items.Where(i => string.Equals(ItemName(i), Name, StringComparison.OrdinalIgnoreCase)).ToArray();
+            if (exact.Length > 0) return exact;
+
+            bool hasWildcards = WildcardPattern.ContainsWildcardCharacters(Name);
+            object[] matched = new object[0];
+            if (hasWildcards)
+            {
+                try
+                {
+                    var pattern = new WildcardPattern(Name, WildcardOptions.IgnoreCase);
+                    matched = items.Where(i => pattern.IsMatch(ItemName(i))).ToArray();
+                }
+                catch (WildcardPatternException)
+                {
+                    // An unbalanced bracket is not a pattern; only the exact match above applies.
+                }
+            }
+            else
+            {
+                WriteError(new ErrorRecord(
+                    new Site24x7Exception($"No {ResourceLabel} is named '{Name}'."),
+                    "Site24x7.NotFound", ErrorCategory.ObjectNotFound, Name));
+            }
+            return matched;
         }
 
         private string ItemName(object item)
@@ -120,7 +180,7 @@ namespace Site24x7.Cmdlets
         /// @{ check_frequency = '5' }), and they override the typed parameters.
         /// </summary>
         [Parameter]
-        public Hashtable Property { get; set; }
+        public virtual Hashtable Property { get; set; }
 
         /// <summary>True for Set-* cmdlets, false for New-*.</summary>
         protected bool IsUpdate => (MyInvocation.MyCommand as CmdletInfo)?.Verb == VerbsCommon.Set;
@@ -133,9 +193,11 @@ namespace Site24x7.Cmdlets
         /// <summary>Throws Site24x7ArgumentException when the body is not one the API can accept.</summary>
         protected virtual void ValidateBody(IDictionary body)
         {
-            if (IsUpdate && body.Count == 0)
+            if (body.Count == 0)
             {
-                throw new Site24x7ArgumentException($"Nothing to update on the {ResourceLabel}. Pass at least one setting, or -Property.");
+                throw new Site24x7ArgumentException(IsUpdate
+                    ? $"Nothing to update on the {ResourceLabel}. Pass at least one setting, or -Property."
+                    : $"Nothing to create the {ResourceLabel} from. Pass its settings, or -Property.");
             }
         }
 

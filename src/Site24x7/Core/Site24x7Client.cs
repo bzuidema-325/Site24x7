@@ -48,8 +48,9 @@ namespace Site24x7
             var uri = BuildUri(session.ApiBaseUri, path, query);
             string json = body == null ? null : (body as string ?? Json.Serialize(body));
             bool renewed = false;
+            int throttled = 0;
 
-            for (int attempt = 0; ; attempt++)
+            while (true)
             {
                 string token = session.Tokens.GetAccessToken(cancel);
                 using (var request = new HttpRequestMessage(new HttpMethod(method.ToUpperInvariant()), uri))
@@ -68,27 +69,29 @@ namespace Site24x7
                     trace?.Verbose?.Invoke($"{request.Method} {uri}");
                     if (json != null && trace?.Debug != null)
                     {
-                        trace.Debug("Request body: " + Clip(body is string ? json : Json.Serialize(body, redactSecrets: true)));
+                        trace.Debug("Request body: " + Clip(body is string ? Json.Redact(json) : Json.Serialize(body, redactSecrets: true)));
                     }
 
                     using (var response = HttpTransport.Send(request, cancel))
                     {
                         string text = HttpTransport.ReadBody(response);
                         trace?.Verbose?.Invoke($"HTTP {(int)response.StatusCode} {response.ReasonPhrase}");
-                        trace?.Debug?.Invoke("Response body: " + Clip(text));
+                        trace?.Debug?.Invoke("Response body: " + Clip(Json.Redact(text)));
 
-                        if (response.StatusCode == HttpStatusCode.Unauthorized && !renewed && session.Tokens.RenewRejected(token, cancel))
+                        if (response.StatusCode == HttpStatusCode.Unauthorized && !renewed && IsTokenRejection(text) &&
+                            session.Tokens.RenewRejected(token, cancel))
                         {
                             // The token may have been revoked or expired early; renew it once and try again.
                             renewed = true;
                             continue;
                         }
 
-                        if ((int)response.StatusCode == 429 && attempt < MaxThrottleRetries)
+                        if ((int)response.StatusCode == 429 && throttled < MaxThrottleRetries)
                         {
-                            var wait = response.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(Math.Pow(2, attempt + 1));
+                            var wait = RetryAfter(response) ?? TimeSpan.FromSeconds(Math.Pow(2, throttled + 1));
                             if (wait <= MaxThrottleWait)
                             {
+                                throttled++;
                                 trace?.Verbose?.Invoke($"Throttled by Site24x7, retrying in {wait.TotalSeconds:0} seconds.");
                                 if (cancel.WaitHandle.WaitOne(wait)) cancel.ThrowIfCancellationRequested();
                                 continue;
@@ -101,6 +104,49 @@ namespace Site24x7
             }
         }
 
+        /// <summary>The wait a 429 asks for, whether Retry-After gives seconds or a date.</summary>
+        private static TimeSpan? RetryAfter(HttpResponseMessage response)
+        {
+            var header = response.Headers.RetryAfter;
+            if (header?.Delta != null) return header.Delta;
+            if (header?.Date != null)
+            {
+                var wait = header.Date.Value - DateTimeOffset.UtcNow;
+                return wait < TimeSpan.Zero ? TimeSpan.Zero : wait;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Whether a 401 says the access token itself is bad, so renewing it can help. A 401 about
+        /// permissions (a scope, a customer, a plan) would fail the same way with a new token, and every
+        /// needless renewal counts against Zoho's limit of about ten per ten minutes.
+        /// The codes are the ones Site24x7 uses for invalid and expired OAuth tokens; any 401 that names
+        /// the token, or carries no Site24x7 code at all, is treated the same way.
+        /// </summary>
+        internal static bool IsTokenRejection(string body)
+        {
+            object parsed;
+            try
+            {
+                parsed = Json.Parse(body);
+            }
+            catch (FormatException)
+            {
+                return true;
+            }
+
+            var code = Json.Get(parsed, "code");
+            if (code == null) return true;
+            var codeText = Convert.ToString(code, CultureInfo.InvariantCulture);
+            if (codeText == "1100" || codeText == "1101" || codeText == "1102") return true;
+
+            var message = Convert.ToString(Json.Get(parsed, "message"), CultureInfo.InvariantCulture) ?? string.Empty;
+            return message.IndexOf("token", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   message.IndexOf("oauth", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   message.IndexOf("expired", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
         // Debug output is written whether or not anyone is listening (cmdlets cannot see the caller's
         // $DebugPreference), so long bodies are cut to keep that cheap.
         private const int MaxTracedBody = 16384;
@@ -109,21 +155,27 @@ namespace Site24x7
             text.Length <= MaxTracedBody ? text : text.Substring(0, MaxTracedBody) + $"... ({text.Length - MaxTracedBody} more characters)";
 
         /// <summary>
-        /// Resolves <paramref name="path"/> against the API root. An absolute URL is accepted only
-        /// when it points inside the session's own API root, so the access token never goes elsewhere.
+        /// Resolves <paramref name="path"/> against the API root. Only a path relative to the root is
+        /// accepted, and the result must still be inside the root on the same host, so the access token
+        /// is never sent anywhere else.
         /// </summary>
         internal static Uri BuildUri(Uri baseUri, string path, IDictionary query)
         {
             path = path ?? string.Empty;
-            if (path.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || path.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            foreach (char c in path)
             {
-                if (!Uri.TryCreate(path, UriKind.Absolute, out var absolute) ||
-                    Uri.Compare(absolute, baseUri, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) != 0 ||
-                    !absolute.AbsolutePath.StartsWith(baseUri.AbsolutePath, StringComparison.OrdinalIgnoreCase))
+                if (c == '\\' || char.IsControl(c))
                 {
-                    throw new Site24x7ArgumentException($"'{path}' is outside this session's API root ({baseUri}). Pass a path relative to it, such as 'monitors'.");
+                    throw new Site24x7ArgumentException($"The endpoint '{path}' contains a backslash or a control character. Use a path relative to the API root, such as 'monitors/123'.");
                 }
-                return AppendQuery(absolute, query);
+            }
+            if (path.Length > 0 && (char.IsWhiteSpace(path[0]) || char.IsWhiteSpace(path[path.Length - 1])))
+            {
+                throw new Site24x7ArgumentException($"The endpoint '{path}' starts or ends with a space. Use a path relative to the API root, such as 'monitors/123'.");
+            }
+            if (path.IndexOf("://", StringComparison.Ordinal) >= 0 || path.StartsWith("//", StringComparison.Ordinal))
+            {
+                throw new Site24x7ArgumentException($"'{path}' is a full URL. Pass a path relative to the API root ({baseUri}), such as 'monitors/123'.");
             }
 
             var relative = path.TrimStart('/');
@@ -131,7 +183,15 @@ namespace Site24x7
             {
                 relative = relative.Substring(4);
             }
-            return AppendQuery(new Uri(baseUri, relative), query);
+
+            var resolved = new Uri(baseUri, relative);
+            if (!resolved.IsAbsoluteUri || resolved.IsUnc ||
+                Uri.Compare(resolved, baseUri, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) != 0 ||
+                !resolved.AbsolutePath.StartsWith(baseUri.AbsolutePath, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new Site24x7ArgumentException($"The endpoint '{path}' resolves outside the API root ({baseUri}). Use a path relative to it, such as 'monitors/123'.");
+            }
+            return AppendQuery(resolved, query);
         }
 
         private static Uri AppendQuery(Uri uri, IDictionary query)
@@ -169,6 +229,10 @@ namespace Site24x7
                     return dt.ToString("yyyy-MM-dd'T'HH:mm:ssK", CultureInfo.InvariantCulture);
                 case string s:
                     return s;
+                case IDictionary _:
+                    throw new Site24x7ArgumentException("A query value cannot be a hashtable or object. Pass a string, number, date or list.");
+                case PSCustomObject _:
+                    throw new Site24x7ArgumentException("A query value cannot be a hashtable or object. Pass a string, number, date or list.");
                 case IEnumerable list:
                     return string.Join(",", list.Cast<object>().Select(FormatQueryValue));
                 case PSObject pso:
@@ -193,7 +257,13 @@ namespace Site24x7
                         $"Site24x7 returned HTTP {(int)response.StatusCode} {response.ReasonPhrase}.",
                         response.StatusCode, null, null, text);
                 }
-                return text;
+                if (raw) return text;
+
+                // A login page, captive portal or wrong -ApiBaseUri answers 200 with HTML; that is not data.
+                var contentType = response.Content?.Headers?.ContentType?.MediaType ?? "an unknown content type";
+                throw new Site24x7ApiException(
+                    $"Site24x7 answered HTTP {(int)response.StatusCode} with {contentType} instead of JSON. Check -ApiBaseUri and any proxy, or use Invoke-Site24x7Api -Raw to read the text.",
+                    response.StatusCode, null, null, text);
             }
 
             // "code" should be a number, but anything else is reported as an API error rather than crashing.

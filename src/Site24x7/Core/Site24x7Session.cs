@@ -56,8 +56,16 @@ namespace Site24x7
     /// </summary>
     internal sealed class TokenSource
     {
+        /// <summary>A token younger than this that the API rejects is not renewed: a new one would be rejected too.</summary>
+        internal static readonly TimeSpan MinAgeToRenew = TimeSpan.FromSeconds(60);
+
+        /// <summary>After a failed refresh, how long to wait before asking Zoho again.</summary>
+        internal static readonly TimeSpan RetryAfterFailure = TimeSpan.FromSeconds(30);
+
         private readonly object _sync = new object();
         private string _accessToken;
+        private DateTime _failedUtc;
+        private Exception _failure;
 
         public TokenSource(Uri accountsUri, string clientId, string clientSecret, string refreshToken, string accessToken)
         {
@@ -66,6 +74,7 @@ namespace Site24x7
             ClientSecret = clientSecret;
             RefreshToken = refreshToken;
             _accessToken = accessToken;
+            ObtainedUtc = DateTime.UtcNow;
         }
 
         public Uri AccountsUri { get; }
@@ -77,6 +86,9 @@ namespace Site24x7
         public string RefreshToken { get; }
 
         public DateTime? ExpiresUtc { get; private set; }
+
+        /// <summary>When the current access token was obtained (or supplied), in UTC.</summary>
+        public DateTime ObtainedUtc { get; internal set; }
 
         public bool CanRefresh => !string.IsNullOrEmpty(ClientId) && !string.IsNullOrEmpty(ClientSecret) && !string.IsNullOrEmpty(RefreshToken);
 
@@ -102,24 +114,47 @@ namespace Site24x7
 
         /// <summary>
         /// Renews the token after the API rejected it. When several requests are rejected at once,
-        /// only the first renews it; the others find a new token already in place.
-        /// Returns false when the token cannot be renewed.
+        /// only the first renews it; the others find a new token already in place. A token younger
+        /// than <see cref="MinAgeToRenew"/> is not renewed, because Zoho allows only about ten new
+        /// tokens per ten minutes and a rejection that soon is not about expiry.
+        /// Returns true when the caller should retry with the current token.
         /// </summary>
         public bool RenewRejected(string rejectedToken, CancellationToken cancel)
         {
             if (!CanRefresh) return false;
             lock (_sync)
             {
-                if (_accessToken == rejectedToken) Refresh(cancel);
+                if (_accessToken != rejectedToken) return true;
+                if (DateTime.UtcNow - ObtainedUtc < MinAgeToRenew) return false;
+                Refresh(cancel);
                 return true;
             }
         }
 
         private void Refresh(CancellationToken cancel)
         {
-            var token = ZohoOAuth.RefreshAccessToken(AccountsUri, ClientId, ClientSecret, RefreshToken, cancel);
-            _accessToken = token.AccessToken;
-            ExpiresUtc = token.ExpiresUtc;
+            if (_failure != null && DateTime.UtcNow - _failedUtc < RetryAfterFailure)
+            {
+                var wait = RetryAfterFailure - (DateTime.UtcNow - _failedUtc);
+                throw new Site24x7Exception(
+                    $"Renewing the access token failed a moment ago, so the module waits {Math.Ceiling(wait.TotalSeconds):0} more seconds before asking Zoho again: {_failure.Message}",
+                    _failure);
+            }
+
+            try
+            {
+                var token = ZohoOAuth.RefreshAccessToken(AccountsUri, ClientId, ClientSecret, RefreshToken, cancel);
+                _accessToken = token.AccessToken;
+                ExpiresUtc = token.ExpiresUtc;
+                ObtainedUtc = DateTime.UtcNow;
+                _failure = null;
+            }
+            catch (Exception ex) when (!(ex is OperationCanceledException))
+            {
+                _failure = ex;
+                _failedUtc = DateTime.UtcNow;
+                throw;
+            }
         }
     }
 
@@ -128,7 +163,7 @@ namespace Site24x7
     /// its own, so thread jobs, ForEach-Object -Parallel and hosted runspaces do not share a sign-in;
     /// pass -Session to them (for example with $using:session).
     /// </summary>
-    public static class Site24x7SessionState
+    internal static class Site24x7SessionState
     {
         private sealed class Holder
         {

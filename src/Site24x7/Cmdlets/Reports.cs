@@ -32,7 +32,7 @@ namespace Site24x7.Cmdlets
         [Parameter(Mandatory = true, ParameterSetName = GroupSet, ValueFromPipelineByPropertyName = true)]
         [Alias("group_id")]
         [ValidateNotNullOrEmpty]
-        public string GroupId { get; set; }
+        public string MonitorGroupId { get; set; }
 
         /// <summary>The status of every monitor of a type, such as URL or SERVER.</summary>
         [Parameter(Mandatory = true, ParameterSetName = TypeSet)]
@@ -55,7 +55,7 @@ namespace Site24x7.Cmdlets
         [Parameter]
         public SwitchParameter IncludeSuspended { get; set; }
 
-        protected override object ErrorTarget => MonitorId ?? GroupId ?? MonitorType;
+        protected override object ErrorTarget => MonitorId ?? MonitorGroupId ?? MonitorType;
 
         protected override void ProcessRecordCore()
         {
@@ -63,7 +63,7 @@ namespace Site24x7.Cmdlets
             switch (ParameterSetName)
             {
                 case MonitorSet: path = Endpoints.CurrentStatus + "/" + Seg(MonitorId); break;
-                case GroupSet: path = Endpoints.CurrentStatus + "/group/" + Seg(GroupId); break;
+                case GroupSet: path = Endpoints.CurrentStatus + "/group/" + Seg(MonitorGroupId); break;
                 case TypeSet: path = Endpoints.CurrentStatus + "/type/" + Seg(MonitorType); break;
                 default: path = Endpoints.CurrentStatus; break;
             }
@@ -82,7 +82,7 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Gets a monitor, monitor group or monitor type report.</para>
-    /// <para type="description">Choose the report with -Report and the period with -Period (or -StartDate and -EndDate). Report-specific options, such as granularity or locations for Performance, go in -Query.</para>
+    /// <para type="description">Choose the report with -Report and the period with -Period, or with -StartDate and -EndDate together. Report-specific options, such as granularity or locations for Performance, go in -Query.</para>
     /// </summary>
     /// <example>
     /// <code>Get-Site24x7Report AvailabilitySummary $monitorId -Period Last30Days</code>
@@ -109,7 +109,7 @@ namespace Site24x7.Cmdlets
         [Parameter(Mandatory = true, ParameterSetName = GroupSet, ValueFromPipelineByPropertyName = true)]
         [Alias("group_id")]
         [ValidateNotNullOrEmpty]
-        public string GroupId { get; set; }
+        public string MonitorGroupId { get; set; }
 
         /// <summary>A report for every monitor of a type, such as URL.</summary>
         [Parameter(Mandatory = true, ParameterSetName = TypeSet)]
@@ -120,11 +120,11 @@ namespace Site24x7.Cmdlets
         [Parameter]
         public ReportPeriod Period { get; set; } = ReportPeriod.Last24Hours;
 
-        /// <summary>Start of a custom period. Sets -Period to Custom.</summary>
+        /// <summary>Start of a custom period, used with -EndDate. Cannot be combined with -Period.</summary>
         [Parameter]
         public DateTime StartDate { get; set; }
 
-        /// <summary>End of a custom period. Sets -Period to Custom.</summary>
+        /// <summary>End of a custom period, used with -StartDate. Cannot be combined with -Period.</summary>
         [Parameter]
         public DateTime EndDate { get; set; }
 
@@ -132,11 +132,20 @@ namespace Site24x7.Cmdlets
         [Parameter]
         public Hashtable Query { get; set; }
 
-        protected override object ErrorTarget => MonitorId ?? GroupId ?? MonitorType;
+        protected override object ErrorTarget => MonitorId ?? MonitorGroupId ?? MonitorType;
 
         protected override void BeginProcessingCore()
         {
-            if (IsBound(nameof(StartDate)) && IsBound(nameof(EndDate)) && EndDate < StartDate)
+            bool start = IsBound(nameof(StartDate)), end = IsBound(nameof(EndDate));
+            if (start != end)
+            {
+                throw new Site24x7ArgumentException("A custom period needs both -StartDate and -EndDate.");
+            }
+            if (start && IsBound(nameof(Period)))
+            {
+                throw new Site24x7ArgumentException("Use either -Period or -StartDate and -EndDate, not both.");
+            }
+            if (start && EndDate < StartDate)
             {
                 throw new Site24x7ArgumentException("-EndDate is before -StartDate.");
             }
@@ -147,16 +156,22 @@ namespace Site24x7.Cmdlets
             string scope;
             switch (ParameterSetName)
             {
-                case GroupSet: scope = "group/" + Seg(GroupId); break;
+                case GroupSet: scope = "group/" + Seg(MonitorGroupId); break;
                 case TypeSet: scope = "monitor_type/" + Seg(MonitorType); break;
                 default: scope = Seg(MonitorId); break;
             }
 
             var query = NewQuery();
-            bool custom = IsBound(nameof(StartDate)) || IsBound(nameof(EndDate));
-            query["period"] = custom ? ReportPeriod.Custom : Period;
-            if (IsBound(nameof(StartDate))) query["start_date"] = ApiDate(StartDate);
-            if (IsBound(nameof(EndDate))) query["end_date"] = ApiDate(EndDate);
+            if (IsBound(nameof(StartDate)))
+            {
+                query["period"] = ReportPeriod.Custom;
+                query["start_date"] = ApiDate(StartDate);
+                query["end_date"] = ApiDate(EndDate);
+            }
+            else
+            {
+                query["period"] = Period;
+            }
             MergeQuery(query, Query);
 
             WriteData(Call("GET", $"{Endpoints.Reports}/{ApiCodes.Of(Report)}/{scope}", query: query));

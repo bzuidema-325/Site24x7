@@ -108,14 +108,7 @@ namespace Site24x7
                     throw new Site24x7ApiException("Zoho Accounts did not return an access token.", response.StatusCode, null, null, null);
                 }
 
-                double expiresIn = 3600;
-                var expiresValue = Json.Get(parsed, "expires_in");
-                if (expiresValue != null &&
-                    double.TryParse(Convert.ToString(expiresValue, CultureInfo.InvariantCulture), NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds) &&
-                    seconds > 0 && seconds < 86400 * 365)
-                {
-                    expiresIn = seconds;
-                }
+                double expiresIn = ReadLifetimeSeconds(parsed);
 
                 return new PlainToken
                 {
@@ -127,6 +120,33 @@ namespace Site24x7
                     Scope = Json.Get(parsed, "scope") as string,
                 };
             }
+        }
+
+        /// <summary>
+        /// The access token's lifetime in seconds. Zoho has answered with "expires_in" in seconds, and
+        /// with "expires_in" in milliseconds next to "expires_in_sec"; anything unusable means one hour.
+        /// </summary>
+        internal static double ReadLifetimeSeconds(object parsed)
+        {
+            const double Day = 86400;
+            if (TryReadPositive(Json.Get(parsed, "expires_in_sec"), out var seconds) && seconds <= Day)
+            {
+                return seconds;
+            }
+            if (TryReadPositive(Json.Get(parsed, "expires_in"), out var value))
+            {
+                if (value <= Day) return value;
+                if (value / 1000 <= Day) return value / 1000;
+            }
+            return 3600;
+        }
+
+        private static bool TryReadPositive(object value, out double number)
+        {
+            number = 0;
+            return value != null &&
+                double.TryParse(Convert.ToString(value, CultureInfo.InvariantCulture), NumberStyles.Float, CultureInfo.InvariantCulture, out number) &&
+                number > 0 && !double.IsInfinity(number);
         }
 
         private static object TryParse(string body)

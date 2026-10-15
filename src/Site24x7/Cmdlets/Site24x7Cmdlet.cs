@@ -81,6 +81,13 @@ namespace Site24x7.Cmdlets
             {
                 error = new ErrorRecord(ex, "Site24x7.Timeout", ErrorCategory.OperationTimeout, ErrorTarget);
             }
+            catch (Exception ex) when (!(ex is RuntimeException) && !(ex is OperationCanceledException) &&
+                                       !(ex is OutOfMemoryException) && !(ex is StackOverflowException))
+            {
+                // Anything else (an ArgumentException from HttpClient, say) is still about this one item;
+                // PowerShell's own exceptions, such as a stopped pipeline, pass through untouched.
+                error = new ErrorRecord(ex, "Site24x7.Unexpected", ErrorCategory.NotSpecified, ErrorTarget);
+            }
 
             if (terminating) ThrowTerminatingError(error);
             else WriteError(error);
@@ -216,7 +223,8 @@ namespace Site24x7.Cmdlets
             }
         }
 
-        protected static OrderedDictionary NewBody() => new OrderedDictionary(StringComparer.Ordinal);
+        /// <summary>A request body whose field names ignore case, so a -Property entry replaces the cmdlet's own field.</summary>
+        protected static OrderedDictionary NewBody() => new OrderedDictionary(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>A query string table whose keys ignore case, so a -Query entry replaces the cmdlet's own value.</summary>
         protected static Hashtable NewQuery() => new Hashtable(StringComparer.OrdinalIgnoreCase);

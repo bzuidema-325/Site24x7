@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Globalization;
 using System.Linq;
 using System.Management.Automation;
 
@@ -119,8 +120,7 @@ namespace Site24x7.Cmdlets
         [Parameter]
         public DateTime MaintenanceEndOn { get; set; }
 
-        protected override string ResourcePath => Endpoints.Maintenance;
-        protected override string ResourceLabel => "maintenance";
+        private protected override ResourceInfo Resource => Resources.Maintenance;
 
         protected override void BuildBody(IDictionary body)
         {
@@ -180,24 +180,6 @@ namespace Site24x7.Cmdlets
     }
 
     /// <summary>
-    /// <para type="synopsis">Gets scheduled maintenance windows.</para>
-    /// </summary>
-    [Cmdlet(VerbsCommon.Get, "Site24x7Maintenance", DefaultParameterSetName = ParameterSets.List)]
-    [OutputType(typeof(PSObject))]
-    public sealed class GetSite24x7MaintenanceCommand : GetResourceCmdlet
-    {
-        /// <summary>The maintenance window's id.</summary>
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
-        [Alias("maintenance_id")]
-        [ValidateNotNullOrEmpty]
-        public string MaintenanceId { get; set; }
-
-        protected override string ResourcePath => Endpoints.Maintenance;
-        protected override string ResourceId => MaintenanceId;
-        protected override string ResourceLabel => "maintenance";
-    }
-
-    /// <summary>
     /// <para type="synopsis">Schedules a maintenance window.</para>
     /// <para type="description">Which other parameters are required depends on -MaintenanceType: Once needs -StartDate and -EndDate; WeeklyByTime needs -StartDay and -EndDay; WeeklyByDay needs -StartDay, -EndDay and -Duration; MonthlyByDate needs -MonthlyStartDate and -Duration; MonthlyByDay needs -StartWeek, -StartDay and -Duration. Choose what it covers with -MonitorId, -MonitorGroupId or -TagId.</para>
     /// </summary>
@@ -247,9 +229,10 @@ namespace Site24x7.Cmdlets
             {
                 throw new Site24x7ArgumentException($"A {MaintenanceType} maintenance also needs: -{string.Join(", -", missing)}.");
             }
-            if (MaintenanceType == MaintenanceType.Once && EndDate.Date < StartDate.Date)
+            if (MaintenanceType == MaintenanceType.Once &&
+                EndDate.Date + TimeSpan.Parse(EndTime, CultureInfo.InvariantCulture) <= StartDate.Date + TimeSpan.Parse(StartTime, CultureInfo.InvariantCulture))
             {
-                throw new Site24x7ArgumentException("-EndDate is before -StartDate.");
+                throw new Site24x7ArgumentException("The maintenance ends before it starts. Check -StartDate, -StartTime, -EndDate and -EndTime.");
             }
             if (!HasField(body, "selection_type"))
             {
@@ -278,23 +261,6 @@ namespace Site24x7.Cmdlets
         protected override string ResourceId => MaintenanceId;
     }
 
-    /// <summary>
-    /// <para type="synopsis">Deletes a scheduled maintenance window.</para>
-    /// </summary>
-    [Cmdlet(VerbsCommon.Remove, "Site24x7Maintenance", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
-    public sealed class RemoveSite24x7MaintenanceCommand : RemoveResourceCmdlet
-    {
-        /// <summary>The maintenance window's id.</summary>
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("maintenance_id")]
-        [ValidateNotNullOrEmpty]
-        public string MaintenanceId { get; set; }
-
-        protected override string ResourcePath => Endpoints.Maintenance;
-        protected override string ResourceId => MaintenanceId;
-        protected override string ResourceLabel => "maintenance";
-    }
-
     /// <summary>Selects what Start-/Stop-Site24x7Maintenance acts on, by id or by name.</summary>
     public abstract class MaintenanceNowCmdlet : Site24x7Cmdlet
     {
@@ -305,8 +271,9 @@ namespace Site24x7.Cmdlets
         protected const string TagIdSet = "TagId";
         protected const string TagNameSet = "TagNameValue";
 
-        /// <summary>Monitors, by id.</summary>
-        [Parameter(Mandatory = true, ParameterSetName = MonitorIdSet)]
+        /// <summary>Monitors, by id. Monitors from Get-Site24x7Monitor can be piped in.</summary>
+        [Parameter(Mandatory = true, ParameterSetName = MonitorIdSet, ValueFromPipelineByPropertyName = true)]
+        [Alias("monitor_id")]
         [ValidateNotNullOrEmpty]
         public string[] MonitorId { get; set; }
 
@@ -315,8 +282,9 @@ namespace Site24x7.Cmdlets
         [ValidateNotNullOrEmpty]
         public string[] MonitorName { get; set; }
 
-        /// <summary>Monitor groups, by id.</summary>
-        [Parameter(Mandatory = true, ParameterSetName = GroupIdSet)]
+        /// <summary>Monitor groups, by id. Groups from Get-Site24x7MonitorGroup can be piped in.</summary>
+        [Parameter(Mandatory = true, ParameterSetName = GroupIdSet, ValueFromPipelineByPropertyName = true)]
+        [Alias("group_id")]
         [ValidateNotNullOrEmpty]
         public string[] MonitorGroupId { get; set; }
 
@@ -325,8 +293,9 @@ namespace Site24x7.Cmdlets
         [ValidateNotNullOrEmpty]
         public string[] MonitorGroupName { get; set; }
 
-        /// <summary>Tags, by id.</summary>
-        [Parameter(Mandatory = true, ParameterSetName = TagIdSet)]
+        /// <summary>Tags, by id. Tags from Get-Site24x7Tag can be piped in.</summary>
+        [Parameter(Mandatory = true, ParameterSetName = TagIdSet, ValueFromPipelineByPropertyName = true)]
+        [Alias("tag_id")]
         [ValidateNotNullOrEmpty]
         public string[] TagId { get; set; }
 
@@ -362,9 +331,13 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Puts monitors, monitor groups or tagged monitors into maintenance now.</para>
+    /// <para type="description">Selecting by name (-MonitorName, -MonitorGroupName or -TagNameValue) calls an API path that has not been checked against a live Site24x7 account yet.</para>
     /// </summary>
     /// <example>
     /// <code>Start-Site24x7Maintenance -MonitorName web01, web02 -Duration 60 -PerformMonitoring</code>
+    /// </example>
+    /// <example>
+    /// <code>Get-Site24x7Monitor -Name 'web-*' | Start-Site24x7Maintenance -Duration 30</code>
     /// </example>
     [Cmdlet(VerbsLifecycle.Start, "Site24x7Maintenance", SupportsShouldProcess = true, DefaultParameterSetName = MonitorIdSet)]
     [OutputType(typeof(PSObject))]
@@ -403,6 +376,7 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Ends maintenance now, for a maintenance window or for monitors, monitor groups or tags.</para>
+    /// <para type="description">Selecting by name (-MonitorName, -MonitorGroupName or -TagNameValue) calls an API path that has not been checked against a live Site24x7 account yet.</para>
     /// </summary>
     [Cmdlet(VerbsLifecycle.Stop, "Site24x7Maintenance", SupportsShouldProcess = true, DefaultParameterSetName = MaintenanceSet)]
     [OutputType(typeof(PSObject))]

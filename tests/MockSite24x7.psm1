@@ -66,7 +66,7 @@ function Start-MockSite24x7 {
 
             $bytes = [System.Text.Encoding]::UTF8.GetBytes([string]$route.Body)
             $ctx.Response.StatusCode = $route.Status
-            $ctx.Response.ContentType = 'application/json;charset=UTF-8'
+            $ctx.Response.ContentType = if ($route.ContentType) { $route.ContentType } else { 'application/json;charset=UTF-8' }
             $ctx.Response.ContentLength64 = $bytes.Length
             $ctx.Response.OutputStream.Write($bytes, 0, $bytes.Length)
             $ctx.Response.Close()
@@ -95,11 +95,12 @@ function Set-MockRoute {
         [object] $Body = @{ code = 0; message = 'success'; data = @{} },
         [int] $Status = 200,
         [hashtable] $Headers = @{},
+        [string] $ContentType,
         [switch] $Once
     )
     $text = if ($Body -is [string]) { $Body } else { $Body | ConvertTo-Json -Depth 20 -Compress }
     $key = "$($Method.ToUpperInvariant()) $Path"
-    $route = @{ Status = $Status; Body = $text; Headers = $Headers }
+    $route = @{ Status = $Status; Body = $text; Headers = $Headers; ContentType = $ContentType }
     if ($Once) {
         if (-not $script:State.Queued.ContainsKey($key)) { $script:State.Queued[$key] = [System.Collections.Queue]::Synchronized([System.Collections.Queue]::new()) }
         $script:State.Queued[$key].Enqueue($route)

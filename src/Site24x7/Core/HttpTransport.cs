@@ -10,6 +10,9 @@ namespace Site24x7
     {
         public static readonly TimeSpan Timeout = TimeSpan.FromSeconds(120);
 
+        /// <summary>The largest response the module reads. Bigger ones are refused rather than exhausting memory.</summary>
+        public const long MaxResponseBytes = 256L * 1024 * 1024;
+
         private static readonly Lazy<HttpClient> LazyClient = new Lazy<HttpClient>(Create, LazyThreadSafetyMode.ExecutionAndPublication);
 
         public static HttpClient Client => LazyClient.Value;
@@ -23,7 +26,7 @@ namespace Site24x7
                 AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
                 UseCookies = false,
             };
-            var client = new HttpClient(handler) { Timeout = Timeout };
+            var client = new HttpClient(handler) { Timeout = Timeout, MaxResponseContentBufferSize = MaxResponseBytes };
             var version = typeof(HttpTransport).Assembly.GetName().Version;
             client.DefaultRequestHeaders.UserAgent.ParseAdd($"Site24x7-PowerShell/{version.Major}.{version.Minor}.{version.Build}");
             return client;

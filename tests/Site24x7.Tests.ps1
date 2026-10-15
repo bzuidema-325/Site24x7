@@ -9,7 +9,8 @@ BeforeDiscovery {
     foreach ($m in [regex]::Matches($endpointsText, 'const string (\w+) = "([^"]+)"')) { $paths[$m.Groups[1].Value] = $m.Groups[2].Value }
 
     # One test case per generated API area, straight from the generator's table.
-    $generated = foreach ($r in (& (Join-Path $root 'tools/Build-ResourceCmdlets.ps1') -TableOnly)) {
+    $table = & (Join-Path $root 'tools/Build-ResourceCmdlets.ps1') -TableOnly
+    $generated = foreach ($r in $table) {
         @{
             Noun       = $r.Noun
             Path       = $paths[$r.Path]
@@ -20,6 +21,34 @@ BeforeDiscovery {
             ApiVersion = $(if ($r.ApiVersion) { $r.ApiVersion } else { '2.0' })
         }
     }
+
+    # One test case per hand-written cmdlet that the other tests do not already drive. Run is the
+    # command; the request it sends must match Method and Path, carry the Body fields, and (for
+    # form or query requests) match the Form and Query patterns.
+    $handWritten = @(
+        @{ Run = "New-Site24x7Monitor 'm' PING -Property @{ host_name = 'h' }"; Method = 'POST'; Path = '/api/monitors'; Body = @{ type = 'PING'; display_name = 'm'; host_name = 'h' } }
+        @{ Run = "New-Site24x7RestApiMonitor 'api' 'https://e.example/x' -RequestBody '{}' -RequestContentType J -OAuthProviderId O1"; Method = 'POST'; Path = '/api/monitors'; Body = @{ type = 'RESTAPI'; website = 'https://e.example/x'; request_param = '{}'; request_content_type = 'J'; oauth2_provider = 'O1' } }
+        @{ Run = "New-Site24x7SslMonitor 'c' example.com"; Method = 'POST'; Path = '/api/monitors'; Body = @{ type = 'SSL_CERT'; domain_name = 'example.com'; port = 443; expire_days = 30; timeout = 30 } }
+        @{ Run = "New-Site24x7PortMonitor 'p' h.example 8443 -UseSsl -Command QUIT"; Method = 'POST'; Path = '/api/monitors'; Body = @{ type = 'PORT'; host_name = 'h.example'; port = 8443; use_ssl = $true; command = 'QUIT' } }
+        @{ Run = "New-Site24x7DnsMonitor 'd' ns1.example example.com -LookupType MX"; Method = 'POST'; Path = '/api/monitors'; Body = @{ type = 'DNS'; dns_host = 'ns1.example'; domain_name = 'example.com'; lookup_type = 15; dns_port = '53' } }
+        @{ Run = "New-Site24x7HeartbeatMonitor 'hb' nightly-job"; Method = 'POST'; Path = '/api/monitors'; Body = @{ type = 'HEARTBEAT'; name_in_ping_url = 'nightly-job' } }
+        @{ Run = "New-Site24x7DomainExpiryMonitor 'de' example.com -WhoisServer whois.example"; Method = 'POST'; Path = '/api/monitors'; Body = @{ type = 'DOMAINEXPIRY'; host_name = 'example.com'; expire_days = 30; whois_server = 'whois.example' } }
+        @{ Run = "New-Site24x7MonitorGroup 'g' -MonitorId 1, 2 -IntegrationId S1"; Method = 'POST'; Path = '/api/monitor_groups'; Body = @{ display_name = 'g'; monitors = @('1', '2'); third_party_services = @('S1') }; ApiVersion = '2.1' }
+        @{ Run = "New-Site24x7Subgroup 's' -TopGroupId T -ParentGroupId P"; Method = 'POST'; Path = '/api/subgroups'; Body = @{ display_name = 's'; top_group_id = 'T'; parent_group_id = 'P' } }
+        @{ Run = "Set-Site24x7Subgroup 4 -Description d"; Method = 'PUT'; Path = '/api/subgroups/4'; Body = @{ description = 'd' } }
+        @{ Run = "New-Site24x7UserGroup 'ug' -UserId u1"; Method = 'POST'; Path = '/api/user_groups'; Body = @{ display_name = 'ug'; users = @('u1') } }
+        @{ Run = "Set-Site24x7UserGroup 3 -ProductId 0"; Method = 'PUT'; Path = '/api/user_groups/3'; Body = @{ product_id = 0 } }
+        @{ Run = "Set-Site24x7Maintenance 6 -DisplayName x"; Method = 'PUT'; Path = '/api/maintenance/6'; Body = @{ display_name = 'x' } }
+        @{ Run = "New-Site24x7Integration -IntegrationType slack -Property @{ name = 'n' }"; Method = 'POST'; Path = '/api/integration/slack'; Body = @{ name = 'n' } }
+        @{ Run = "Set-Site24x7Integration 8 slack -Property @{ name = 'n' }"; Method = 'PUT'; Path = '/api/integration/slack/8'; Body = @{ name = 'n' } }
+        @{ Run = "Set-Site24x7Monitor 5 -IntegrationId S1"; Method = 'PUT'; Path = '/api/monitors/5'; Body = @{ third_party_services = @('S1') } }
+        @{ Run = "Add-Site24x7MonitorGroupMember G 1, 2"; Method = 'PUT'; Path = '/api/monitor_groups/add_monitors'; Body = @{ group_id = 'G'; monitor_ids = @('1', '2') } }
+        @{ Run = "Get-Site24x7LogReport 5 -Date 2026-09-01"; Method = 'GET'; Path = '/api/reports/log_reports/5'; Query = '^date=2026-09-01$' }
+        @{ Run = "Get-Site24x7MonitorType"; Method = 'GET'; Path = '/api/monitor_type_constants' }
+        @{ Run = "Get-Site24x7DeviceKey"; Method = 'GET'; Path = '/api/device_key' }
+        @{ Run = "Request-Site24x7AccessToken -ClientId c -ClientSecret (Secure s) -RefreshToken (Secure r) -AccountsUri `$accounts"; Method = 'POST'; Path = '/accounts/oauth/v2/token'; Form = 'grant_type=refresh_token'; Token = $true }
+        @{ Run = "Revoke-Site24x7RefreshToken -RefreshToken (Secure r1) -AccountsUri `$accounts -Confirm:`$false"; Method = 'POST'; Path = '/accounts/oauth/v2/token/revoke'; Query = '^token=r1$' }
+    )
 }
 
 BeforeAll {
@@ -28,6 +57,12 @@ BeforeAll {
     if (-not (Test-Path $manifest)) { throw "Build the module first: ./build.ps1" }
     Import-Module $manifest -Force
     Import-Module (Join-Path $PSScriptRoot 'MockSite24x7.psm1') -Force
+
+    # Every exported cmdlet must be called by some test: by name in this file, or by a generated-area test.
+    $testText = Get-Content $PSCommandPath -Raw
+    $generatedNames = foreach ($r in (& (Join-Path $root 'tools/Build-ResourceCmdlets.ps1') -TableOnly)) {
+        foreach ($v in $r.Verbs) { "$v-Site24x7$($r.Noun)" }
+    }
 
     $mock = Start-MockSite24x7
     $api = "$($mock.BaseUri)api/"
@@ -43,6 +78,13 @@ BeforeAll {
 
     function Body($request) { $request.Body | ConvertFrom-Json }
     function Ok($data) { @{ code = 0; message = 'success'; data = $data } }
+
+    # The current access token's age decides whether a 401 renews it; tests make it look old.
+    function Set-TokenAge([timespan] $age) {
+        $session = Get-Site24x7Session
+        $tokens = $session.GetType().GetProperty('Tokens', [System.Reflection.BindingFlags]'NonPublic,Instance').GetValue($session)
+        $tokens.GetType().GetProperty('ObtainedUtc').SetValue($tokens, [datetime]::UtcNow - $age)
+    }
 }
 
 AfterAll {
@@ -61,6 +103,35 @@ Describe 'Module' {
         $missing = Get-Command -Module Site24x7 | Where-Object { -not (Get-Help $_.Name).Synopsis -or (Get-Help $_.Name).Synopsis -like "*$($_.Name)*[<]*" }
         $missing | Should -BeNullOrEmpty
         (Get-Help Connect-Site24x7 -Parameter RefreshToken).Description.Text | Should -Not -BeNullOrEmpty
+    }
+
+    It 'uses approved verbs, ShouldProcess for changes, and declares output types' {
+        $approved = (Get-Verb).Verb
+        foreach ($c in Get-Command -Module Site24x7) {
+            $c.Verb | Should -BeIn $approved -Because "$($c.Name) needs an approved verb"
+            if ($c.Verb -in 'New', 'Set', 'Remove', 'Add', 'Start', 'Stop', 'Enable', 'Disable', 'Revoke', 'Invoke') {
+                $c.Parameters.ContainsKey('WhatIf') | Should -BeTrue -Because "$($c.Name) changes something"
+            }
+            if ($c.Verb -notin 'Remove', 'Disconnect') {
+                $c.OutputType | Should -Not -BeNullOrEmpty -Because "$($c.Name) writes output"
+            }
+        }
+    }
+
+    It 'documents every parameter' {
+        foreach ($c in Get-Command -Module Site24x7) {
+            foreach ($p in (Get-Help $c.Name -Full).parameters.parameter) {
+                if ($p.name -in 'WhatIf', 'Confirm') { continue }
+                ($p.description.Text -join '') | Should -Not -BeNullOrEmpty -Because "$($c.Name) -$($p.name) needs help text"
+            }
+        }
+    }
+
+    It 'has a test that calls every cmdlet' {
+        $untested = (Get-Module Site24x7).ExportedCmdlets.Keys | Where-Object {
+            $_ -notin $generatedNames -and $testText -notmatch "\b$([regex]::Escape($_))\b"
+        }
+        $untested | Should -BeNullOrEmpty -Because 'every cmdlet needs a test (add it to $handWritten if nothing else covers it)'
     }
 
     It 'takes secrets as SecureString or PSCredential only' {
@@ -96,12 +167,58 @@ Describe 'Signing in' {
 
     It 'refreshes the token once and retries when the API answers 401' {
         Connect-Mock
+        Set-TokenAge ([timespan]::FromMinutes(5))
         Set-MockRoute GET /api/monitors -Status 401 -Once -Body @{ code = 1100; message = 'Invalid token' }
         Set-MockRoute GET /api/monitors (Ok @(@{ monitor_id = '1'; display_name = 'a' }))
         Set-MockRoute POST /accounts/oauth/v2/token @{ access_token = 'at-2'; expires_in = 3600 }
         $result = Get-Site24x7Monitor
         $result.monitor_id | Should -Be '1'
         (Get-MockRequest GET /api/monitors | Select-Object -Last 1).Headers['Authorization'] | Should -Be 'Zoho-oauthtoken at-2'
+    }
+
+    It 'does not renew a token that was obtained moments ago' {
+        Connect-Mock
+        Set-MockRoute GET /api/monitors -Status 401 -Body @{ code = 1100; message = 'Invalid token' }
+        1..5 | ForEach-Object { Get-Site24x7Monitor -ErrorAction SilentlyContinue }
+        @(Get-MockRequest POST /accounts/oauth/v2/token).Count | Should -Be 1
+        @(Get-MockRequest GET /api/monitors).Count | Should -Be 5
+    }
+
+    It 'does not renew the token for a 401 about something else' {
+        Connect-Mock
+        Set-TokenAge ([timespan]::FromMinutes(5))
+        Set-MockRoute GET /api/monitors -Status 401 -Body @{ code = 2001; message = 'You do not have permission for this customer' }
+        $err = $null
+        Get-Site24x7Monitor -ErrorVariable err -ErrorAction SilentlyContinue
+        $err[0].CategoryInfo.Category | Should -Be 'AuthenticationError'
+        @(Get-MockRequest POST /accounts/oauth/v2/token).Count | Should -Be 1
+    }
+
+    It 'waits before asking Zoho again after a failed renewal' {
+        Connect-Mock
+        Set-TokenAge ([timespan]::FromMinutes(5))
+        Set-MockRoute GET /api/monitors -Status 401 -Body @{ code = 1100; message = 'Invalid token' }
+        Set-MockRoute POST /accounts/oauth/v2/token -Status 400 -Body @{ error = 'access_denied' }
+        { Get-Site24x7Monitor -ErrorAction Stop } | Should -Throw '*access_denied*'
+        { Get-Site24x7Monitor -ErrorAction Stop } | Should -Throw '*waits*'
+        @(Get-MockRequest POST /accounts/oauth/v2/token).Count | Should -Be 2
+    }
+
+    It 'reads the token lifetime from expires_in_sec, or expires_in in milliseconds' {
+        Set-MockRoute POST /accounts/oauth/v2/token @{ access_token = 'a'; expires_in = 3600000; expires_in_sec = 3600 }
+        $s = Connect-Site24x7 -ClientId c -ClientSecret (Secure s) -RefreshToken (Secure r) -ApiBaseUri $api -AccountsUri $accounts -PassThru
+        ($s.AccessTokenExpires - [datetime]::UtcNow).TotalMinutes | Should -BeLessOrEqual 61
+        Set-MockRoute POST /accounts/oauth/v2/token @{ access_token = 'a'; expires_in = 3600000 }
+        $s = Connect-Site24x7 -ClientId c -ClientSecret (Secure s) -RefreshToken (Secure r) -ApiBaseUri $api -AccountsUri $accounts -PassThru
+        ($s.AccessTokenExpires - [datetime]::UtcNow).TotalMinutes | Should -BeLessOrEqual 61
+        ($s.AccessTokenExpires - [datetime]::UtcNow).TotalMinutes | Should -BeGreaterThan 50
+    }
+
+    It 'disconnects even when revoking the refresh token fails' {
+        Connect-Mock
+        Set-MockRoute POST /accounts/oauth/v2/token/revoke -Status 500 -Body @{ error = 'server_error' }
+        Disconnect-Site24x7 -RevokeRefreshToken -Confirm:$false -ErrorAction SilentlyContinue
+        Get-Site24x7Session | Should -BeNullOrEmpty
     }
 
     It 'stops with an error when Zoho returns an error with HTTP 200' {
@@ -199,10 +316,19 @@ Describe 'Reading' {
         (Get-Site24x7Monitor -Name 'web*').monitor_id | Should -Be @('1', '3')
     }
 
+    It 'matches a name with wildcard characters exactly, and reports a plain name that matches nothing' {
+        Set-MockRoute GET /api/monitors (Ok @(@{ monitor_id = '5'; display_name = 'web [prod]' }))
+        (Get-Site24x7Monitor -Name 'web [prod]').monitor_id | Should -Be '5'
+        $err = $null
+        Get-Site24x7Monitor -Name 'nothing' -ErrorVariable err -ErrorAction SilentlyContinue | Should -BeNullOrEmpty
+        $err[0].CategoryInfo.Category | Should -Be 'ObjectNotFound'
+        Get-Site24x7Monitor -Name 'nothing*' -ErrorAction Stop | Should -BeNullOrEmpty
+    }
+
     It 'filters by type, including when the API returns a single object' {
-        (Get-Site24x7Monitor -Type RESTAPI).monitor_id | Should -Be '2'
+        (Get-Site24x7Monitor -MonitorType RESTAPI).monitor_id | Should -Be '2'
         Set-MockRoute GET /api/monitors (Ok @{ monitor_id = '9'; display_name = 'Only'; type = 'URL' })
-        (Get-Site24x7Monitor -Type URL).monitor_id | Should -Be '9'
+        (Get-Site24x7Monitor -MonitorType URL).monitor_id | Should -Be '9'
     }
 
     It 'gets one monitor by id, including from API objects in the pipeline' {
@@ -233,14 +359,15 @@ Describe 'Reading' {
         $err[0].Exception.Message | Should -Match 'INVALID_TOKEN'
     }
 
-    It 'uses API version 2.1 for monitor groups' {
-        Set-MockRoute GET /api/monitor_groups (Ok @())
-        Get-Site24x7Group | Out-Null
+    It 'uses API version 2.1 for monitor groups, and their formatting' {
+        Set-MockRoute GET /api/monitor_groups (Ok @(@{ group_id = '1'; display_name = 'g' }))
+        (Get-Site24x7MonitorGroup).PSObject.TypeNames[0] | Should -Be 'Site24x7.MonitorGroup'
+        (Get-FormatData Site24x7.MonitorGroup) | Should -Not -BeNullOrEmpty
         (Get-MockRequest GET /api/monitor_groups).Headers['Accept'] | Should -Be 'application/json; version=2.1'
     }
 
     It 'builds current status paths and flags' {
-        Get-Site24x7CurrentStatus -GroupId 77 -IncludeSuspended | Out-Null
+        Get-Site24x7CurrentStatus -MonitorGroupId 77 -IncludeSuspended | Out-Null
         $req = Get-MockRequest GET /api/current_status/group/77
         $req.Query | Should -Be 'suspended_required=true'
     }
@@ -251,6 +378,16 @@ Describe 'Reading' {
         $req.Query | Should -Match 'period=50'
         $req.Query | Should -Match 'start_date=2026-09-01'
         $req.Query | Should -Match 'end_date=2026-09-30'
+    }
+
+    It 'needs both report dates, and not -Period with them' {
+        { Get-Site24x7Report Summary 5 -StartDate 2026-09-01 -ErrorAction Stop } | Should -Throw '*both -StartDate and -EndDate*'
+        { Get-Site24x7Report Summary 5 -Period Last7Days -StartDate 2026-09-01 -EndDate 2026-09-02 -ErrorAction Stop } | Should -Throw '*not both*'
+        Get-MockRequest GET | Should -BeNullOrEmpty
+    }
+
+    It 'refuses a hashtable as a query value' {
+        { Get-Site24x7Tag -Query @{ x = @{ a = 1 } } -ErrorAction Stop } | Should -Throw '*query value*'
     }
 
     It 'lets -Query replace a report option whatever its case' {
@@ -278,6 +415,33 @@ Describe 'Reading' {
         Set-MockRoute GET /api/tags (Ok @(@{ tag_id = '1'; tag_name = 't' }))
         (Get-Site24x7Tag).tag_id | Should -Be '1'
         @(Get-MockRequest GET /api/tags).Count | Should -Be 2
+    }
+
+    It 'understands Retry-After given as a date' {
+        $soon = [datetime]::UtcNow.AddSeconds(2).ToString('r')
+        Set-MockRoute GET /api/tags -Status 429 -Once -Headers @{ 'Retry-After' = $soon } -Body @{ code = 429; message = 'slow down' }
+        Set-MockRoute GET /api/tags (Ok @(@{ tag_id = '1' }))
+        (Get-Site24x7Tag).tag_id | Should -Be '1'
+        Clear-MockSite24x7
+        $late = [datetime]::UtcNow.AddHours(2).ToString('r')
+        Set-MockRoute GET /api/tags -Status 429 -Headers @{ 'Retry-After' = $late } -Body @{ code = 429; message = 'slow down' }
+        { Get-Site24x7Tag -ErrorAction Stop } | Should -Throw '*slow down*'
+        @(Get-MockRequest GET /api/tags).Count | Should -Be 1
+    }
+
+    It 'reports a successful answer that is not JSON as an error' {
+        Set-MockRoute GET /api/tags -Body '<html>Sign in</html>' -ContentType 'text/html'
+        $err = $null
+        Get-Site24x7Tag -ErrorVariable err -ErrorAction SilentlyContinue | Should -BeNullOrEmpty
+        $err[0].Exception.Message | Should -Match 'text/html instead of JSON'
+        Invoke-Site24x7Api GET tags -Raw | Should -Be '<html>Sign in</html>'
+    }
+
+    It 'checks the unverified API paths with tools/Test-Site24x7Endpoints.ps1, read-only' {
+        $results = & (Join-Path $root 'tools/Test-Site24x7Endpoints.ps1')
+        ($results | Where-Object Constant -eq 'Alarms').Result | Should -Be 'OK'
+        ($results | Where-Object Constant -eq 'StartMaintenanceByName').Result | Should -Be 'Not checked'
+        Get-MockRequest | Where-Object Method -ne 'GET' | Should -BeNullOrEmpty
     }
 
     It 'reports a long Retry-After instead of hanging' {
@@ -341,6 +505,37 @@ Describe 'Writing' {
         ($debug.Message -join "`n") | Should -Not -Match 'hunter2'
     }
 
+    It 'keeps secrets in headers, keys, string bodies and responses out of the debug stream' {
+        $DebugPreference = 'Continue'
+        Set-MockRoute POST /api/monitors (Ok @{ monitor_id = '1'; auth_pass = 'echoed-secret'; custom_headers = @(@{ name = 'Authorization'; value = 'Bearer resp-token' }) })
+        Set-MockRoute POST /api/custom (Ok @{})
+        $debug = & {
+            New-Site24x7WebsiteMonitor 'Home' 'https://example.com' -Header @{ Authorization = 'Bearer SUPERSECRET'; 'X-Plain' = 'visible' } 5>&1
+            Invoke-Site24x7Api POST custom -Body '{"password":"PW2","note":"ok"}' -Confirm:$false 5>&1
+            Invoke-Site24x7Api POST custom -Body @{ api_key = 'KEY3' } -Confirm:$false 5>&1
+            Invoke-Site24x7Api POST custom -Body 'not json PW4' -Confirm:$false 5>&1
+        } | Where-Object { $_ -is [System.Management.Automation.DebugRecord] }
+        $text = $debug.Message -join "`n"
+        foreach ($secret in 'SUPERSECRET', 'PW2', 'KEY3', 'PW4', 'echoed-secret', 'resp-token') {
+            $text | Should -Not -Match $secret -Because "$secret must not be logged"
+        }
+        $text | Should -Match 'visible'
+        $text | Should -Match '"note":"ok"'
+    }
+
+    It 'sends a SecureString in -Property as its value' {
+        New-Site24x7Monitor 'm' URL -Property @{ auth_pass = (Secure 'pw-from-vault') } | Out-Null
+        (Body (Get-MockRequest POST /api/monitors)).auth_pass | Should -Be 'pw-from-vault'
+    }
+
+    It 'lets -Property replace a typed setting whatever its case' {
+        New-Site24x7WebsiteMonitor 'Home' 'https://example.com' -Timeout 10 -Property @{ Timeout = 5 } | Out-Null
+        $req = Get-MockRequest POST /api/monitors
+        $b = Body $req
+        $b.timeout | Should -Be 5
+        ([regex]::Matches($req.Body, '"timeout"', 'IgnoreCase')).Count | Should -Be 1
+    }
+
     It 'lets -Property override and extend the typed parameters' {
         New-Site24x7WebsiteMonitor 'Home' 'https://example.com' -Timeout 10 -Property @{ timeout = 45; follow_redirects = $true } | Out-Null
         $b = Body (Get-MockRequest POST /api/monitors)
@@ -354,7 +549,7 @@ Describe 'Writing' {
     }
 
     It 'updates only the settings given, including false and zero' {
-        Set-Site24x7Group -GroupId 9 -Description '' -HealthThresholdCount 0 -SuppressAlert:$false -Confirm:$false | Out-Null
+        Set-Site24x7MonitorGroup -MonitorGroupId 9 -Description '' -HealthThresholdCount 0 -SuppressAlert:$false -Confirm:$false | Out-Null
         $req = Get-MockRequest PUT /api/monitor_groups/9
         $b = Body $req
         @($b.PSObject.Properties.Name | Sort-Object) | Should -Be @('description', 'health_threshold_count', 'suppress_alert')
@@ -368,6 +563,12 @@ Describe 'Writing' {
         { '1', '2', '3' | ForEach-Object { [pscustomobject]@{ tag_id = $_ } } | Set-Site24x7Tag -ErrorAction Stop } |
             Should -Throw '*Nothing to update*'
         Get-MockRequest PUT | Should -BeNullOrEmpty
+    }
+
+    It 'refuses to create something from nothing, and empty strings in generated parameters' {
+        { New-Site24x7WebToken -Property @{} -ErrorAction Stop } | Should -Throw '*Nothing to create*'
+        { Set-Site24x7Tag 5 -TagName '' -ErrorAction Stop } | Should -Throw
+        Get-MockRequest | Should -BeNullOrEmpty
     }
 
     It 'merges with the current monitor when asked' {
@@ -403,6 +604,18 @@ Describe 'Writing' {
         { New-Site24x7Maintenance 'm' Daily -StartTime 01:00 -EndTime 02:00 -ErrorAction Stop } |
             Should -Throw '*-MonitorId, -MonitorGroupId or -TagId*'
         Get-MockRequest POST | Should -BeNullOrEmpty
+    }
+
+    It 'refuses a one-time maintenance that ends before it starts' {
+        { New-Site24x7Maintenance 'm' Once -StartDate 2026-11-01 -EndDate 2026-11-01 -StartTime 23:00 -EndTime 22:00 -MonitorId 1 -ErrorAction Stop } |
+            Should -Throw '*ends before it starts*'
+    }
+
+    It 'starts maintenance for monitors piped in' {
+        [pscustomobject]@{ monitor_id = '1'; display_name = 'a' } | Start-Site24x7Maintenance -Duration 15 | Out-Null
+        $b = Body (Get-MockRequest POST /api/start_maintenance)
+        $b.monitors | Should -Be @('1')
+        $b.selection_type | Should -Be 2
     }
 
     It 'creates a one-time maintenance' {
@@ -448,7 +661,7 @@ Describe 'Writing' {
     }
 
     It 'adds monitors to a group by name' {
-        Add-Site24x7GroupMonitor -GroupName Web -MonitorName a, b | Out-Null
+        Add-Site24x7MonitorGroupMember -MonitorGroupName Web -MonitorName a, b | Out-Null
         $b = Body (Get-MockRequest PUT /api/monitor_groups/add_monitors)
         $b.group_name | Should -Be 'Web'
         $b.monitor_names | Should -Be @('a', 'b')
@@ -477,14 +690,30 @@ Describe 'Writing' {
         $r = Invoke-Site24x7Api POST custom/thing -Body @{ x = 'y' } -Confirm:$false
         $r.id | Should -Be 1
         (Body (Get-MockRequest POST /api/custom/thing)).x | Should -Be 'y'
-        Invoke-Site24x7Api GET "$($api)monitors" | Out-Null
+        Invoke-Site24x7Api GET '/api/monitors' | Out-Null
         Get-MockRequest GET /api/monitors | Should -Not -BeNullOrEmpty
     }
 
     It 'never sends the token outside the API root' {
-        { Invoke-Site24x7Api GET 'https://example.com/collect' -ErrorAction Stop } | Should -Throw '*outside*'
-        { Invoke-Site24x7Api GET "$($mock.BaseUri)accounts/x" -ErrorAction Stop } | Should -Throw '*outside*'
+        $bad = @(
+            'https://example.com/collect', "$($api)monitors", ' https://evil.example/x', "`thttps://evil.example/x",
+            '\/evil.example/x', '\\evil.example/x', '//evil.example/x', '..\accounts\oauth', '../oauth/x', 'api/../../x',
+            'ftp://evil.example/', 'file:///etc/passwd', 'mailto:x@evil.example', "monitors`r`nX: 1"
+        )
+        foreach ($endpoint in $bad) {
+            $err = $null
+            Invoke-Site24x7Api GET $endpoint -ErrorVariable err -ErrorAction SilentlyContinue
+            $err[0].CategoryInfo.Category | Should -Be 'InvalidArgument' -Because "'$endpoint' leaves the API root"
+        }
+        @(Get-MockRequest).Count | Should -Be 0
         { Invoke-Site24x7Api GET monitors -Body @{ a = 1 } -ErrorAction Stop } | Should -Throw '*GET request cannot have a body*'
+    }
+
+    It 'keeps going through the pipeline after an unusable endpoint' {
+        $err = $null
+        $out = '\\evil.example/x', 'tags' | ForEach-Object { Invoke-Site24x7Api GET $_ -ErrorVariable +err -ErrorAction SilentlyContinue }
+        @($err).Count | Should -Be 1
+        Get-MockRequest GET /api/tags | Should -Not -BeNullOrEmpty
     }
 
     It 'round-trips awkward text through JSON' {
@@ -529,5 +758,27 @@ Describe 'Generated area <Noun>' -ForEach $generated {
         foreach ($name in $Mandatory) { $params[$name] = 'x' }
         & "New-Site24x7$Noun" @params | Out-Null
         (Body (Get-MockRequest POST "/api/$Path")).a | Should -Be 1
+    }
+}
+
+Describe 'Hand-written cmdlet: <Run>' -ForEach $handWritten {
+    BeforeAll { Connect-Mock }
+    BeforeEach { Clear-MockSite24x7 }
+
+    It 'sends <Method> <Path>' {
+        if ($Token) { Set-MockRoute POST /accounts/oauth/v2/token @{ access_token = 'a'; expires_in = 3600 } }
+        & ([scriptblock]::Create($Run)) | Out-Null
+        $req = @(Get-MockRequest $Method $Path)
+        $req.Count | Should -Be 1 -Because "$Run should send one $Method $Path"
+        if ($ApiVersion) { $req[0].Headers['Accept'] | Should -Be "application/json; version=$ApiVersion" }
+        if ($Query) { $req[0].Query | Should -Match $Query }
+        if ($Form) { $req[0].Body | Should -Match $Form }
+        if ($Body) {
+            $sent = Body $req[0]
+            foreach ($key in $Body.Keys) {
+                $sent.PSObject.Properties.Name | Should -Contain $key
+                @($sent.$key) | Should -Be @($Body[$key]) -Because "field $key"
+            }
+        }
     }
 }

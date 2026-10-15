@@ -199,12 +199,19 @@ namespace Site24x7.Cmdlets
             var session = Site24x7SessionState.Current;
             if (session == null || !ShouldProcess(session.ToString(), "Disconnect")) return;
 
-            if (RevokeRefreshToken && session.Tokens.CanRefresh && ShouldProcess("refresh token", "Revoke"))
+            // The session ends even when revoking fails, so a failed revoke never leaves you signed in;
+            // the failure is still reported.
+            try
             {
-                ZohoOAuth.RevokeRefreshToken(session.AccountsUri, session.Tokens.RefreshToken, CancelToken);
+                if (RevokeRefreshToken && session.Tokens.CanRefresh && ShouldProcess("refresh token", "Revoke"))
+                {
+                    ZohoOAuth.RevokeRefreshToken(session.AccountsUri, session.Tokens.RefreshToken, CancelToken);
+                }
             }
-
-            Site24x7SessionState.Current = null;
+            finally
+            {
+                Site24x7SessionState.Current = null;
+            }
         }
     }
 
@@ -229,7 +236,7 @@ namespace Site24x7.Cmdlets
     /// <example>
     /// <code>Get-Site24x7MspCustomer -Name 'Contoso*' | Set-Site24x7Context</code>
     /// </example>
-    [Cmdlet(VerbsCommon.Set, "Site24x7Context", DefaultParameterSetName = CustomerSet)]
+    [Cmdlet(VerbsCommon.Set, "Site24x7Context", DefaultParameterSetName = CustomerSet, SupportsShouldProcess = true)]
     [OutputType(typeof(Site24x7Session))]
     public sealed class SetSite24x7ContextCommand : Site24x7CmdletBase
     {
@@ -246,6 +253,7 @@ namespace Site24x7.Cmdlets
         [Parameter(Mandatory = true, ParameterSetName = ResetSet)]
         public SwitchParameter Reset { get; set; }
 
+        /// <summary>Also returns the new session, to save and pass to -Session later.</summary>
         [Parameter]
         public SwitchParameter PassThru { get; set; }
 
@@ -255,6 +263,9 @@ namespace Site24x7.Cmdlets
         {
             var session = Site24x7SessionState.Current;
             if (session == null) ThrowNotConnected();
+
+            var target = Reset ? "your own account" : "customer " + CustomerId;
+            if (!ShouldProcess(target, "Switch the Site24x7 session to")) return;
 
             var switched = session.WithCustomer(Reset ? null : CustomerId);
             Site24x7SessionState.Current = switched;

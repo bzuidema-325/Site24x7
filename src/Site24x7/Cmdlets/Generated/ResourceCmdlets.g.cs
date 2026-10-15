@@ -6,6 +6,313 @@ using System.Management.Automation;
 
 namespace Site24x7.Cmdlets
 {
+    internal static partial class Resources
+    {
+        public static readonly ResourceInfo Monitor = new ResourceInfo(Endpoints.Monitors, "monitor");
+        public static readonly ResourceInfo MonitorGroup = new ResourceInfo(Endpoints.MonitorGroups, "monitor group", "2.1");
+        public static readonly ResourceInfo Subgroup = new ResourceInfo(Endpoints.Subgroups, "subgroup");
+        public static readonly ResourceInfo User = new ResourceInfo(Endpoints.Users, "user");
+        public static readonly ResourceInfo UserGroup = new ResourceInfo(Endpoints.UserGroups, "user group");
+        public static readonly ResourceInfo Maintenance = new ResourceInfo(Endpoints.Maintenance, "maintenance window");
+        public static readonly ResourceInfo Integration = new ResourceInfo(Endpoints.ThirdPartyServices, "integration");
+        public static readonly ResourceInfo ThresholdProfile = new ResourceInfo(Endpoints.ThresholdProfiles, "threshold profile", "2.1");
+        public static readonly ResourceInfo NotificationProfile = new ResourceInfo(Endpoints.NotificationProfiles, "notification profile");
+        public static readonly ResourceInfo LocationProfile = new ResourceInfo(Endpoints.LocationProfiles, "location profile");
+        public static readonly ResourceInfo ResourceCheckProfile = new ResourceInfo(Endpoints.ResourceCheckProfiles, "resource check profile");
+        public static readonly ResourceInfo CredentialProfile = new ResourceInfo(Endpoints.CredentialProfiles, "credential profile");
+        public static readonly ResourceInfo Tag = new ResourceInfo(Endpoints.Tags, "tag");
+        public static readonly ResourceInfo OnCallSchedule = new ResourceInfo(Endpoints.OnCallSchedules, "on-call schedule");
+        public static readonly ResourceInfo AttributeAlertGroup = new ResourceInfo(Endpoints.AttributeGroups, "attribute alert group");
+        public static readonly ResourceInfo EmailTemplate = new ResourceInfo(Endpoints.EmailTemplates, "email template");
+        public static readonly ResourceInfo BusinessHours = new ResourceInfo(Endpoints.BusinessHours, "business hours");
+        public static readonly ResourceInfo OAuthProvider = new ResourceInfo(Endpoints.OAuthProviders, "OAuth provider");
+        public static readonly ResourceInfo WebToken = new ResourceInfo(Endpoints.WebTokens, "web token");
+        public static readonly ResourceInfo GlobalParameter = new ResourceInfo(Endpoints.GlobalParameters, "global parameter");
+        public static readonly ResourceInfo ITAutomation = new ResourceInfo(Endpoints.ITAutomation, "IT automation");
+        public static readonly ResourceInfo ConfigurationRule = new ResourceInfo(Endpoints.ConfigurationRules, "configuration rule");
+        public static readonly ResourceInfo ScheduledReport = new ResourceInfo(Endpoints.ScheduledReports, "scheduled report");
+        public static readonly ResourceInfo SlaSetting = new ResourceInfo(Endpoints.SlaSettings, "SLA setting");
+        public static readonly ResourceInfo StatusPage = new ResourceInfo(Endpoints.StatusPages, "status page");
+        public static readonly ResourceInfo OnPremisePoller = new ResourceInfo(Endpoints.OnPremisePollers, "on-premise poller");
+        public static readonly ResourceInfo AuditLog = new ResourceInfo(Endpoints.AuditLogs, "audit log");
+        public static readonly ResourceInfo ITAutomationLog = new ResourceInfo(Endpoints.ITAutomationLogs, "IT automation log");
+        public static readonly ResourceInfo AlertLog = new ResourceInfo(Endpoints.AlertLogs, "alert log");
+        public static readonly ResourceInfo Alarm = new ResourceInfo(Endpoints.Alarms, "alarm");
+        public static readonly ResourceInfo LocationTemplate = new ResourceInfo(Endpoints.LocationTemplate, "location template");
+        public static readonly ResourceInfo MspCustomer = new ResourceInfo(Endpoints.MspCustomers, "MSP customer");
+        public static readonly ResourceInfo BusinessUnit = new ResourceInfo(Endpoints.BusinessUnits, "business unit");
+    }
+
+    #region Monitor
+
+    /// <summary>
+    /// <para type="synopsis">Gets monitors.</para>
+    /// <para type="description">Without -MonitorId, lists every monitor, optionally filtered by -Name (wildcards allowed) and -MonitorType.</para>
+    /// </summary>
+    /// <example>
+    /// <code>Get-Site24x7Monitor -Name 'web-*' -MonitorType URL</code>
+    /// </example>
+    [Cmdlet(VerbsCommon.Get, "Site24x7Monitor", DefaultParameterSetName = ParameterSets.List)]
+    [OutputType(typeof(PSObject))]
+    public sealed partial class GetSite24x7MonitorCommand : GetResourceCmdlet
+    {
+        /// <summary>The monitor's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("monitor_id")]
+        [ValidateNotNullOrEmpty]
+        public string MonitorId { get; set; }
+
+        protected override string ResourceId => MonitorId;
+        private protected override ResourceInfo Resource => Resources.Monitor;
+        protected override string NameProperty => "display_name";
+    }
+
+    /// <summary>
+    /// <para type="synopsis">Deletes a monitor.</para>
+    /// </summary>
+    [Cmdlet(VerbsCommon.Remove, "Site24x7Monitor", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
+    public sealed class RemoveSite24x7MonitorCommand : RemoveResourceCmdlet
+    {
+        /// <summary>The monitor's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("monitor_id")]
+        [ValidateNotNullOrEmpty]
+        public string MonitorId { get; set; }
+
+        protected override string ResourceId => MonitorId;
+        private protected override ResourceInfo Resource => Resources.Monitor;
+    }
+
+    #endregion
+
+    #region MonitorGroup
+
+    /// <summary>
+    /// <para type="synopsis">Gets monitor groups.</para>
+    /// </summary>
+    [Cmdlet(VerbsCommon.Get, "Site24x7MonitorGroup", DefaultParameterSetName = ParameterSets.List)]
+    [OutputType(typeof(PSObject))]
+    public sealed class GetSite24x7MonitorGroupCommand : GetResourceCmdlet
+    {
+        /// <summary>The monitor group's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("group_id")]
+        [ValidateNotNullOrEmpty]
+        public string MonitorGroupId { get; set; }
+
+        protected override string ResourceId => MonitorGroupId;
+        private protected override ResourceInfo Resource => Resources.MonitorGroup;
+        protected override string NameProperty => "display_name";
+    }
+
+    /// <summary>
+    /// <para type="synopsis">Deletes a monitor group. Its monitors are not deleted.</para>
+    /// </summary>
+    [Cmdlet(VerbsCommon.Remove, "Site24x7MonitorGroup", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
+    public sealed class RemoveSite24x7MonitorGroupCommand : RemoveResourceCmdlet
+    {
+        /// <summary>The monitor group's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("group_id")]
+        [ValidateNotNullOrEmpty]
+        public string MonitorGroupId { get; set; }
+
+        protected override string ResourceId => MonitorGroupId;
+        private protected override ResourceInfo Resource => Resources.MonitorGroup;
+    }
+
+    #endregion
+
+    #region Subgroup
+
+    /// <summary>
+    /// <para type="synopsis">Gets subgroups of monitor groups.</para>
+    /// </summary>
+    [Cmdlet(VerbsCommon.Get, "Site24x7Subgroup", DefaultParameterSetName = ParameterSets.List)]
+    [OutputType(typeof(PSObject))]
+    public sealed class GetSite24x7SubgroupCommand : GetResourceCmdlet
+    {
+        /// <summary>The subgroup's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("group_id")]
+        [ValidateNotNullOrEmpty]
+        public string SubgroupId { get; set; }
+
+        protected override string ResourceId => SubgroupId;
+        private protected override ResourceInfo Resource => Resources.Subgroup;
+        protected override string NameProperty => "display_name";
+    }
+
+    /// <summary>
+    /// <para type="synopsis">Deletes a subgroup.</para>
+    /// </summary>
+    [Cmdlet(VerbsCommon.Remove, "Site24x7Subgroup", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
+    public sealed class RemoveSite24x7SubgroupCommand : RemoveResourceCmdlet
+    {
+        /// <summary>The subgroup's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("group_id")]
+        [ValidateNotNullOrEmpty]
+        public string SubgroupId { get; set; }
+
+        protected override string ResourceId => SubgroupId;
+        private protected override ResourceInfo Resource => Resources.Subgroup;
+    }
+
+    #endregion
+
+    #region User
+
+    /// <summary>
+    /// <para type="synopsis">Gets users.</para>
+    /// </summary>
+    [Cmdlet(VerbsCommon.Get, "Site24x7User", DefaultParameterSetName = ParameterSets.List)]
+    [OutputType(typeof(PSObject))]
+    public sealed class GetSite24x7UserCommand : GetResourceCmdlet
+    {
+        /// <summary>The user's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("user_id")]
+        [ValidateNotNullOrEmpty]
+        public string UserId { get; set; }
+
+        protected override string ResourceId => UserId;
+        private protected override ResourceInfo Resource => Resources.User;
+        protected override string NameProperty => "display_name";
+    }
+
+    /// <summary>
+    /// <para type="synopsis">Deletes a user.</para>
+    /// </summary>
+    [Cmdlet(VerbsCommon.Remove, "Site24x7User", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
+    public sealed class RemoveSite24x7UserCommand : RemoveResourceCmdlet
+    {
+        /// <summary>The user's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("user_id")]
+        [ValidateNotNullOrEmpty]
+        public string UserId { get; set; }
+
+        protected override string ResourceId => UserId;
+        private protected override ResourceInfo Resource => Resources.User;
+    }
+
+    #endregion
+
+    #region UserGroup
+
+    /// <summary>
+    /// <para type="synopsis">Gets user groups.</para>
+    /// </summary>
+    [Cmdlet(VerbsCommon.Get, "Site24x7UserGroup", DefaultParameterSetName = ParameterSets.List)]
+    [OutputType(typeof(PSObject))]
+    public sealed class GetSite24x7UserGroupCommand : GetResourceCmdlet
+    {
+        /// <summary>The user group's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("user_group_id")]
+        [ValidateNotNullOrEmpty]
+        public string UserGroupId { get; set; }
+
+        protected override string ResourceId => UserGroupId;
+        private protected override ResourceInfo Resource => Resources.UserGroup;
+        protected override string NameProperty => "display_name";
+    }
+
+    /// <summary>
+    /// <para type="synopsis">Deletes a user group.</para>
+    /// </summary>
+    [Cmdlet(VerbsCommon.Remove, "Site24x7UserGroup", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
+    public sealed class RemoveSite24x7UserGroupCommand : RemoveResourceCmdlet
+    {
+        /// <summary>The user group's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("user_group_id")]
+        [ValidateNotNullOrEmpty]
+        public string UserGroupId { get; set; }
+
+        protected override string ResourceId => UserGroupId;
+        private protected override ResourceInfo Resource => Resources.UserGroup;
+    }
+
+    #endregion
+
+    #region Maintenance
+
+    /// <summary>
+    /// <para type="synopsis">Gets scheduled maintenance windows.</para>
+    /// </summary>
+    [Cmdlet(VerbsCommon.Get, "Site24x7Maintenance", DefaultParameterSetName = ParameterSets.List)]
+    [OutputType(typeof(PSObject))]
+    public sealed class GetSite24x7MaintenanceCommand : GetResourceCmdlet
+    {
+        /// <summary>The maintenance window's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("maintenance_id")]
+        [ValidateNotNullOrEmpty]
+        public string MaintenanceId { get; set; }
+
+        protected override string ResourceId => MaintenanceId;
+        private protected override ResourceInfo Resource => Resources.Maintenance;
+        protected override string NameProperty => "display_name";
+    }
+
+    /// <summary>
+    /// <para type="synopsis">Deletes a maintenance window.</para>
+    /// </summary>
+    [Cmdlet(VerbsCommon.Remove, "Site24x7Maintenance", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
+    public sealed class RemoveSite24x7MaintenanceCommand : RemoveResourceCmdlet
+    {
+        /// <summary>The maintenance window's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("maintenance_id")]
+        [ValidateNotNullOrEmpty]
+        public string MaintenanceId { get; set; }
+
+        protected override string ResourceId => MaintenanceId;
+        private protected override ResourceInfo Resource => Resources.Maintenance;
+    }
+
+    #endregion
+
+    #region Integration
+
+    /// <summary>
+    /// <para type="synopsis">Gets third-party integrations (Slack, PagerDuty, webhooks and others).</para>
+    /// </summary>
+    [Cmdlet(VerbsCommon.Get, "Site24x7Integration", DefaultParameterSetName = ParameterSets.List)]
+    [OutputType(typeof(PSObject))]
+    public sealed class GetSite24x7IntegrationCommand : GetResourceCmdlet
+    {
+        /// <summary>The integration's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
+        [Alias("service_id")]
+        [ValidateNotNullOrEmpty]
+        public string IntegrationId { get; set; }
+
+        protected override string ResourceId => IntegrationId;
+        private protected override ResourceInfo Resource => Resources.Integration;
+        protected override string NameProperty => "name";
+    }
+
+    /// <summary>
+    /// <para type="synopsis">Deletes a integration.</para>
+    /// </summary>
+    [Cmdlet(VerbsCommon.Remove, "Site24x7Integration", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
+    public sealed class RemoveSite24x7IntegrationCommand : RemoveResourceCmdlet
+    {
+        /// <summary>The integration's id.</summary>
+        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+        [Alias("service_id")]
+        [ValidateNotNullOrEmpty]
+        public string IntegrationId { get; set; }
+
+        protected override string ResourceId => IntegrationId;
+        private protected override ResourceInfo Resource => Resources.Integration;
+    }
+
+    #endregion
+
     #region ThresholdProfile
 
     /// <summary>
@@ -22,9 +329,7 @@ namespace Site24x7.Cmdlets
         public string ProfileId { get; set; }
 
         protected override string ResourceId => ProfileId;
-        protected override string ResourcePath => Endpoints.ThresholdProfiles;
-        protected override string ResourceLabel => "threshold profile";
-        protected override string ApiVersion => "2.1";
+        private protected override ResourceInfo Resource => Resources.ThresholdProfile;
         protected override string NameProperty => "profile_name";
     }
 
@@ -33,11 +338,13 @@ namespace Site24x7.Cmdlets
     {
         /// <summary>The threshold profile's name.</summary>
         [Parameter]
+        [ValidateNotNullOrEmpty]
         public virtual string ProfileName { get; set; }
 
         /// <summary>The monitor type the profile applies to, for example URL or SERVER.</summary>
         [Parameter]
-        public virtual string Type { get; set; }
+        [ValidateNotNullOrEmpty]
+        public virtual string MonitorType { get; set; }
 
         /// <summary>1 = static thresholds, 2 = AI-based thresholds.</summary>
         [Parameter]
@@ -51,14 +358,12 @@ namespace Site24x7.Cmdlets
         [Parameter]
         public SwitchParameter WebsiteContentModified { get; set; }
 
-        protected override string ResourcePath => Endpoints.ThresholdProfiles;
-        protected override string ResourceLabel => "threshold profile";
-        protected override string ApiVersion => "2.1";
+        private protected override ResourceInfo Resource => Resources.ThresholdProfile;
 
         protected override void BuildBody(IDictionary body)
         {
             AddIfBound(body, "profile_name", nameof(ProfileName), ProfileName);
-            AddIfBound(body, "type", nameof(Type), Type);
+            AddIfBound(body, "type", nameof(MonitorType), MonitorType);
             AddIfBound(body, "profile_type", nameof(ProfileType), ProfileType);
             AddIfBound(body, "down_location_threshold", nameof(DownLocationThreshold), DownLocationThreshold);
             AddIfBound(body, "website_content_modified", nameof(WebsiteContentModified), WebsiteContentModified);
@@ -80,7 +385,7 @@ namespace Site24x7.Cmdlets
         /// <summary>The monitor type the profile applies to, for example URL or SERVER.</summary>
         [Parameter(Mandatory = true, Position = 1)]
         [ValidateNotNullOrEmpty]
-        public override string Type { get; set; }
+        public override string MonitorType { get; set; }
     }
 
     /// <summary>
@@ -112,9 +417,7 @@ namespace Site24x7.Cmdlets
         public string ProfileId { get; set; }
 
         protected override string ResourceId => ProfileId;
-        protected override string ResourcePath => Endpoints.ThresholdProfiles;
-        protected override string ResourceLabel => "threshold profile";
-        protected override string ApiVersion => "2.1";
+        private protected override ResourceInfo Resource => Resources.ThresholdProfile;
     }
 
     #endregion
@@ -135,8 +438,7 @@ namespace Site24x7.Cmdlets
         public string ProfileId { get; set; }
 
         protected override string ResourceId => ProfileId;
-        protected override string ResourcePath => Endpoints.NotificationProfiles;
-        protected override string ResourceLabel => "notification profile";
+        private protected override ResourceInfo Resource => Resources.NotificationProfile;
         protected override string NameProperty => "profile_name";
     }
 
@@ -145,6 +447,7 @@ namespace Site24x7.Cmdlets
     {
         /// <summary>The notification profile's name.</summary>
         [Parameter]
+        [ValidateNotNullOrEmpty]
         public virtual string ProfileName { get; set; }
 
         /// <summary>Attach a root cause analysis to down alerts.</summary>
@@ -169,6 +472,7 @@ namespace Site24x7.Cmdlets
 
         /// <summary>The user group alerted when a down alert is escalated.</summary>
         [Parameter]
+        [ValidateNotNullOrEmpty]
         public string EscalationUserGroupId { get; set; }
 
         /// <summary>Minutes to wait before escalating.</summary>
@@ -177,10 +481,10 @@ namespace Site24x7.Cmdlets
 
         /// <summary>Email template id (see Get-Site24x7EmailTemplate).</summary>
         [Parameter]
+        [ValidateNotNullOrEmpty]
         public string TemplateId { get; set; }
 
-        protected override string ResourcePath => Endpoints.NotificationProfiles;
-        protected override string ResourceLabel => "notification profile";
+        private protected override ResourceInfo Resource => Resources.NotificationProfile;
 
         protected override void BuildBody(IDictionary body)
         {
@@ -238,8 +542,7 @@ namespace Site24x7.Cmdlets
         public string ProfileId { get; set; }
 
         protected override string ResourceId => ProfileId;
-        protected override string ResourcePath => Endpoints.NotificationProfiles;
-        protected override string ResourceLabel => "notification profile";
+        private protected override ResourceInfo Resource => Resources.NotificationProfile;
     }
 
     #endregion
@@ -260,8 +563,7 @@ namespace Site24x7.Cmdlets
         public string ProfileId { get; set; }
 
         protected override string ResourceId => ProfileId;
-        protected override string ResourcePath => Endpoints.LocationProfiles;
-        protected override string ResourceLabel => "location profile";
+        private protected override ResourceInfo Resource => Resources.LocationProfile;
         protected override string NameProperty => "profile_name";
     }
 
@@ -270,22 +572,24 @@ namespace Site24x7.Cmdlets
     {
         /// <summary>The location profile's name.</summary>
         [Parameter]
+        [ValidateNotNullOrEmpty]
         public virtual string ProfileName { get; set; }
 
         /// <summary>Location id, from Get-Site24x7LocationTemplate.</summary>
         [Parameter]
+        [ValidateNotNullOrEmpty]
         public virtual string PrimaryLocation { get; set; }
 
         /// <summary>Location ids to fall back to.</summary>
         [Parameter]
+        [ValidateNotNullOrEmpty]
         public string[] SecondaryLocation { get; set; }
 
         /// <summary>Never check from locations outside the profile.</summary>
         [Parameter]
         public SwitchParameter RestrictAlternateLocation { get; set; }
 
-        protected override string ResourcePath => Endpoints.LocationProfiles;
-        protected override string ResourceLabel => "location profile";
+        private protected override ResourceInfo Resource => Resources.LocationProfile;
 
         protected override void BuildBody(IDictionary body)
         {
@@ -343,8 +647,7 @@ namespace Site24x7.Cmdlets
         public string ProfileId { get; set; }
 
         protected override string ResourceId => ProfileId;
-        protected override string ResourcePath => Endpoints.LocationProfiles;
-        protected override string ResourceLabel => "location profile";
+        private protected override ResourceInfo Resource => Resources.LocationProfile;
     }
 
     #endregion
@@ -353,6 +656,7 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Gets resource check profiles.</para>
+    /// <para type="description">The API path this cmdlet calls (resource_profiles) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Get, "Site24x7ResourceCheckProfile", DefaultParameterSetName = ParameterSets.List)]
     [OutputType(typeof(PSObject))]
@@ -365,8 +669,7 @@ namespace Site24x7.Cmdlets
         public string ProfileId { get; set; }
 
         protected override string ResourceId => ProfileId;
-        protected override string ResourcePath => Endpoints.ResourceCheckProfiles;
-        protected override string ResourceLabel => "resource check profile";
+        private protected override ResourceInfo Resource => Resources.ResourceCheckProfile;
         protected override string NameProperty => "profile_name";
     }
 
@@ -375,10 +678,10 @@ namespace Site24x7.Cmdlets
     {
         /// <summary>The resource check profile's name.</summary>
         [Parameter]
+        [ValidateNotNullOrEmpty]
         public virtual string ProfileName { get; set; }
 
-        protected override string ResourcePath => Endpoints.ResourceCheckProfiles;
-        protected override string ResourceLabel => "resource check profile";
+        private protected override ResourceInfo Resource => Resources.ResourceCheckProfile;
 
         protected override void BuildBody(IDictionary body)
         {
@@ -388,6 +691,7 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Creates a resource check profile. Fields without a parameter can be passed with -Property.</para>
+    /// <para type="description">The API path this cmdlet calls (resource_profiles) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.New, "Site24x7ResourceCheckProfile", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
@@ -401,6 +705,7 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Updates a resource check profile. Only the settings you pass are sent.</para>
+    /// <para type="description">The API path this cmdlet calls (resource_profiles) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Set, "Site24x7ResourceCheckProfile", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
@@ -417,6 +722,7 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Deletes a resource check profile.</para>
+    /// <para type="description">The API path this cmdlet calls (resource_profiles) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Remove, "Site24x7ResourceCheckProfile", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7ResourceCheckProfileCommand : RemoveResourceCmdlet
@@ -428,8 +734,7 @@ namespace Site24x7.Cmdlets
         public string ProfileId { get; set; }
 
         protected override string ResourceId => ProfileId;
-        protected override string ResourcePath => Endpoints.ResourceCheckProfiles;
-        protected override string ResourceLabel => "resource check profile";
+        private protected override ResourceInfo Resource => Resources.ResourceCheckProfile;
     }
 
     #endregion
@@ -450,8 +755,7 @@ namespace Site24x7.Cmdlets
         public string CredentialProfileId { get; set; }
 
         protected override string ResourceId => CredentialProfileId;
-        protected override string ResourcePath => Endpoints.CredentialProfiles;
-        protected override string ResourceLabel => "credential profile";
+        private protected override ResourceInfo Resource => Resources.CredentialProfile;
         protected override string NameProperty => "credential_name";
     }
 
@@ -460,6 +764,7 @@ namespace Site24x7.Cmdlets
     {
         /// <summary>The credential profile's name.</summary>
         [Parameter]
+        [ValidateNotNullOrEmpty]
         public virtual string CredentialName { get; set; }
 
         /// <summary>The API's credential type number.</summary>
@@ -471,8 +776,7 @@ namespace Site24x7.Cmdlets
         [Credential]
         public PSCredential Credential { get; set; }
 
-        protected override string ResourcePath => Endpoints.CredentialProfiles;
-        protected override string ResourceLabel => "credential profile";
+        private protected override ResourceInfo Resource => Resources.CredentialProfile;
 
         protected override void BuildBody(IDictionary body)
         {
@@ -528,8 +832,7 @@ namespace Site24x7.Cmdlets
         public string CredentialProfileId { get; set; }
 
         protected override string ResourceId => CredentialProfileId;
-        protected override string ResourcePath => Endpoints.CredentialProfiles;
-        protected override string ResourceLabel => "credential profile";
+        private protected override ResourceInfo Resource => Resources.CredentialProfile;
     }
 
     #endregion
@@ -550,8 +853,7 @@ namespace Site24x7.Cmdlets
         public string TagId { get; set; }
 
         protected override string ResourceId => TagId;
-        protected override string ResourcePath => Endpoints.Tags;
-        protected override string ResourceLabel => "tag";
+        private protected override ResourceInfo Resource => Resources.Tag;
         protected override string NameProperty => "tag_name";
     }
 
@@ -560,18 +862,20 @@ namespace Site24x7.Cmdlets
     {
         /// <summary>The tag's name.</summary>
         [Parameter]
+        [ValidateNotNullOrEmpty]
         public virtual string TagName { get; set; }
 
         /// <summary>The tag's value.</summary>
         [Parameter]
+        [ValidateNotNullOrEmpty]
         public string TagValue { get; set; }
 
         /// <summary>A hex color such as #B7DA9E.</summary>
         [Parameter]
+        [ValidateNotNullOrEmpty]
         public string TagColor { get; set; }
 
-        protected override string ResourcePath => Endpoints.Tags;
-        protected override string ResourceLabel => "tag";
+        private protected override ResourceInfo Resource => Resources.Tag;
 
         protected override void BuildBody(IDictionary body)
         {
@@ -623,8 +927,7 @@ namespace Site24x7.Cmdlets
         public string TagId { get; set; }
 
         protected override string ResourceId => TagId;
-        protected override string ResourcePath => Endpoints.Tags;
-        protected override string ResourceLabel => "tag";
+        private protected override ResourceInfo Resource => Resources.Tag;
     }
 
     #endregion
@@ -645,8 +948,7 @@ namespace Site24x7.Cmdlets
         public string OnCallScheduleId { get; set; }
 
         protected override string ResourceId => OnCallScheduleId;
-        protected override string ResourcePath => Endpoints.OnCallSchedules;
-        protected override string ResourceLabel => "on-call schedule";
+        private protected override ResourceInfo Resource => Resources.OnCallSchedule;
         protected override string NameProperty => "schedule_name";
     }
 
@@ -655,10 +957,10 @@ namespace Site24x7.Cmdlets
     {
         /// <summary>The on-call schedule's name.</summary>
         [Parameter]
-        public string ScheduleName { get; set; }
+        [ValidateNotNullOrEmpty]
+        public virtual string ScheduleName { get; set; }
 
-        protected override string ResourcePath => Endpoints.OnCallSchedules;
-        protected override string ResourceLabel => "on-call schedule";
+        private protected override ResourceInfo Resource => Resources.OnCallSchedule;
 
         protected override void BuildBody(IDictionary body)
         {
@@ -673,6 +975,10 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7OnCallScheduleCommand : Site24x7OnCallScheduleWriteCmdlet
     {
+        /// <summary>The on-call schedule's name.</summary>
+        [Parameter(Mandatory = true, Position = 0)]
+        [ValidateNotNullOrEmpty]
+        public override string ScheduleName { get; set; }
     }
 
     /// <summary>
@@ -704,8 +1010,7 @@ namespace Site24x7.Cmdlets
         public string OnCallScheduleId { get; set; }
 
         protected override string ResourceId => OnCallScheduleId;
-        protected override string ResourcePath => Endpoints.OnCallSchedules;
-        protected override string ResourceLabel => "on-call schedule";
+        private protected override ResourceInfo Resource => Resources.OnCallSchedule;
     }
 
     #endregion
@@ -714,6 +1019,7 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Gets attribute alert groups.</para>
+    /// <para type="description">The API path this cmdlet calls (attribute_groups) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Get, "Site24x7AttributeAlertGroup", DefaultParameterSetName = ParameterSets.List)]
     [OutputType(typeof(PSObject))]
@@ -726,8 +1032,7 @@ namespace Site24x7.Cmdlets
         public string AttributeGroupId { get; set; }
 
         protected override string ResourceId => AttributeGroupId;
-        protected override string ResourcePath => Endpoints.AttributeGroups;
-        protected override string ResourceLabel => "attribute alert group";
+        private protected override ResourceInfo Resource => Resources.AttributeAlertGroup;
         protected override string NameProperty => "display_name";
     }
 
@@ -736,10 +1041,10 @@ namespace Site24x7.Cmdlets
     {
         /// <summary>The attribute alert group's name.</summary>
         [Parameter]
-        public string DisplayName { get; set; }
+        [ValidateNotNullOrEmpty]
+        public virtual string DisplayName { get; set; }
 
-        protected override string ResourcePath => Endpoints.AttributeGroups;
-        protected override string ResourceLabel => "attribute alert group";
+        private protected override ResourceInfo Resource => Resources.AttributeAlertGroup;
 
         protected override void BuildBody(IDictionary body)
         {
@@ -749,15 +1054,21 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Creates a attribute alert group. Fields without a parameter can be passed with -Property.</para>
+    /// <para type="description">The API path this cmdlet calls (attribute_groups) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.New, "Site24x7AttributeAlertGroup", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7AttributeAlertGroupCommand : Site24x7AttributeAlertGroupWriteCmdlet
     {
+        /// <summary>The attribute alert group's name.</summary>
+        [Parameter(Mandatory = true, Position = 0)]
+        [ValidateNotNullOrEmpty]
+        public override string DisplayName { get; set; }
     }
 
     /// <summary>
     /// <para type="synopsis">Updates a attribute alert group. Only the settings you pass are sent.</para>
+    /// <para type="description">The API path this cmdlet calls (attribute_groups) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Set, "Site24x7AttributeAlertGroup", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
@@ -774,6 +1085,7 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Deletes a attribute alert group.</para>
+    /// <para type="description">The API path this cmdlet calls (attribute_groups) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Remove, "Site24x7AttributeAlertGroup", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7AttributeAlertGroupCommand : RemoveResourceCmdlet
@@ -785,8 +1097,7 @@ namespace Site24x7.Cmdlets
         public string AttributeGroupId { get; set; }
 
         protected override string ResourceId => AttributeGroupId;
-        protected override string ResourcePath => Endpoints.AttributeGroups;
-        protected override string ResourceLabel => "attribute alert group";
+        private protected override ResourceInfo Resource => Resources.AttributeAlertGroup;
     }
 
     #endregion
@@ -807,8 +1118,7 @@ namespace Site24x7.Cmdlets
         public string TemplateId { get; set; }
 
         protected override string ResourceId => TemplateId;
-        protected override string ResourcePath => Endpoints.EmailTemplates;
-        protected override string ResourceLabel => "email template";
+        private protected override ResourceInfo Resource => Resources.EmailTemplate;
         protected override string NameProperty => "display_name";
     }
 
@@ -817,10 +1127,10 @@ namespace Site24x7.Cmdlets
     {
         /// <summary>The email template's name.</summary>
         [Parameter]
-        public string DisplayName { get; set; }
+        [ValidateNotNullOrEmpty]
+        public virtual string DisplayName { get; set; }
 
-        protected override string ResourcePath => Endpoints.EmailTemplates;
-        protected override string ResourceLabel => "email template";
+        private protected override ResourceInfo Resource => Resources.EmailTemplate;
 
         protected override void BuildBody(IDictionary body)
         {
@@ -835,6 +1145,10 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7EmailTemplateCommand : Site24x7EmailTemplateWriteCmdlet
     {
+        /// <summary>The email template's name.</summary>
+        [Parameter(Mandatory = true, Position = 0)]
+        [ValidateNotNullOrEmpty]
+        public override string DisplayName { get; set; }
     }
 
     /// <summary>
@@ -866,8 +1180,7 @@ namespace Site24x7.Cmdlets
         public string TemplateId { get; set; }
 
         protected override string ResourceId => TemplateId;
-        protected override string ResourcePath => Endpoints.EmailTemplates;
-        protected override string ResourceLabel => "email template";
+        private protected override ResourceInfo Resource => Resources.EmailTemplate;
     }
 
     #endregion
@@ -888,8 +1201,7 @@ namespace Site24x7.Cmdlets
         public string BusinessHoursId { get; set; }
 
         protected override string ResourceId => BusinessHoursId;
-        protected override string ResourcePath => Endpoints.BusinessHours;
-        protected override string ResourceLabel => "business hours";
+        private protected override ResourceInfo Resource => Resources.BusinessHours;
         protected override string NameProperty => "display_name";
     }
 
@@ -898,10 +1210,10 @@ namespace Site24x7.Cmdlets
     {
         /// <summary>The business hours's name.</summary>
         [Parameter]
-        public string DisplayName { get; set; }
+        [ValidateNotNullOrEmpty]
+        public virtual string DisplayName { get; set; }
 
-        protected override string ResourcePath => Endpoints.BusinessHours;
-        protected override string ResourceLabel => "business hours";
+        private protected override ResourceInfo Resource => Resources.BusinessHours;
 
         protected override void BuildBody(IDictionary body)
         {
@@ -916,6 +1228,10 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7BusinessHoursCommand : Site24x7BusinessHoursWriteCmdlet
     {
+        /// <summary>The business hours's name.</summary>
+        [Parameter(Mandatory = true, Position = 0)]
+        [ValidateNotNullOrEmpty]
+        public override string DisplayName { get; set; }
     }
 
     /// <summary>
@@ -947,8 +1263,7 @@ namespace Site24x7.Cmdlets
         public string BusinessHoursId { get; set; }
 
         protected override string ResourceId => BusinessHoursId;
-        protected override string ResourcePath => Endpoints.BusinessHours;
-        protected override string ResourceLabel => "business hours";
+        private protected override ResourceInfo Resource => Resources.BusinessHours;
     }
 
     #endregion
@@ -957,6 +1272,7 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Gets OAuth providers used by REST API monitors.</para>
+    /// <para type="description">The API path this cmdlet calls (oauth_providers) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Get, "Site24x7OAuthProvider", DefaultParameterSetName = ParameterSets.List)]
     [OutputType(typeof(PSObject))]
@@ -969,8 +1285,7 @@ namespace Site24x7.Cmdlets
         public string ProviderId { get; set; }
 
         protected override string ResourceId => ProviderId;
-        protected override string ResourcePath => Endpoints.OAuthProviders;
-        protected override string ResourceLabel => "OAuth provider";
+        private protected override ResourceInfo Resource => Resources.OAuthProvider;
         protected override string NameProperty => "name";
     }
 
@@ -979,10 +1294,10 @@ namespace Site24x7.Cmdlets
     {
         /// <summary>The OAuth provider's name.</summary>
         [Parameter]
-        public string ProviderName { get; set; }
+        [ValidateNotNullOrEmpty]
+        public virtual string ProviderName { get; set; }
 
-        protected override string ResourcePath => Endpoints.OAuthProviders;
-        protected override string ResourceLabel => "OAuth provider";
+        private protected override ResourceInfo Resource => Resources.OAuthProvider;
 
         protected override void BuildBody(IDictionary body)
         {
@@ -992,15 +1307,21 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Creates a OAuth provider. Fields without a parameter can be passed with -Property.</para>
+    /// <para type="description">The API path this cmdlet calls (oauth_providers) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.New, "Site24x7OAuthProvider", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7OAuthProviderCommand : Site24x7OAuthProviderWriteCmdlet
     {
+        /// <summary>The OAuth provider's name.</summary>
+        [Parameter(Mandatory = true, Position = 0)]
+        [ValidateNotNullOrEmpty]
+        public override string ProviderName { get; set; }
     }
 
     /// <summary>
     /// <para type="synopsis">Updates a OAuth provider. Only the settings you pass are sent.</para>
+    /// <para type="description">The API path this cmdlet calls (oauth_providers) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Set, "Site24x7OAuthProvider", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
@@ -1017,6 +1338,7 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Deletes a OAuth provider.</para>
+    /// <para type="description">The API path this cmdlet calls (oauth_providers) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Remove, "Site24x7OAuthProvider", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7OAuthProviderCommand : RemoveResourceCmdlet
@@ -1028,8 +1350,7 @@ namespace Site24x7.Cmdlets
         public string ProviderId { get; set; }
 
         protected override string ResourceId => ProviderId;
-        protected override string ResourcePath => Endpoints.OAuthProviders;
-        protected override string ResourceLabel => "OAuth provider";
+        private protected override ResourceInfo Resource => Resources.OAuthProvider;
     }
 
     #endregion
@@ -1038,6 +1359,7 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Gets web tokens.</para>
+    /// <para type="description">The API path this cmdlet calls (web_tokens) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Get, "Site24x7WebToken", DefaultParameterSetName = ParameterSets.List)]
     [OutputType(typeof(PSObject))]
@@ -1050,16 +1372,14 @@ namespace Site24x7.Cmdlets
         public string WebTokenId { get; set; }
 
         protected override string ResourceId => WebTokenId;
-        protected override string ResourcePath => Endpoints.WebTokens;
-        protected override string ResourceLabel => "web token";
+        private protected override ResourceInfo Resource => Resources.WebToken;
         protected override string NameProperty => "name";
     }
 
     /// <summary>Settings shared by New-Site24x7WebToken and Set-Site24x7WebToken.</summary>
     public abstract class Site24x7WebTokenWriteCmdlet : WriteResourceCmdlet
     {
-        protected override string ResourcePath => Endpoints.WebTokens;
-        protected override string ResourceLabel => "web token";
+        private protected override ResourceInfo Resource => Resources.WebToken;
 
         protected override void BuildBody(IDictionary body)
         {
@@ -1067,16 +1387,22 @@ namespace Site24x7.Cmdlets
     }
 
     /// <summary>
-    /// <para type="synopsis">Creates a web token. Fields without a parameter can be passed with -Property.</para>
+    /// <para type="synopsis">Creates a web token. Pass its fields with -Property, using the API's field names.</para>
+    /// <para type="description">The API path this cmdlet calls (web_tokens) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.New, "Site24x7WebToken", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7WebTokenCommand : Site24x7WebTokenWriteCmdlet
     {
+        /// <summary>The web token's fields, as a hashtable of the API's field names and values.</summary>
+        [Parameter(Mandatory = true, Position = 0)]
+        [ValidateNotNull]
+        public override Hashtable Property { get; set; }
     }
 
     /// <summary>
     /// <para type="synopsis">Updates a web token. Only the settings you pass are sent.</para>
+    /// <para type="description">The API path this cmdlet calls (web_tokens) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Set, "Site24x7WebToken", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
@@ -1093,6 +1419,7 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Deletes a web token.</para>
+    /// <para type="description">The API path this cmdlet calls (web_tokens) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Remove, "Site24x7WebToken", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7WebTokenCommand : RemoveResourceCmdlet
@@ -1104,8 +1431,7 @@ namespace Site24x7.Cmdlets
         public string WebTokenId { get; set; }
 
         protected override string ResourceId => WebTokenId;
-        protected override string ResourcePath => Endpoints.WebTokens;
-        protected override string ResourceLabel => "web token";
+        private protected override ResourceInfo Resource => Resources.WebToken;
     }
 
     #endregion
@@ -1114,6 +1440,7 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Gets global parameters.</para>
+    /// <para type="description">The API path this cmdlet calls (global_params) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Get, "Site24x7GlobalParameter", DefaultParameterSetName = ParameterSets.List)]
     [OutputType(typeof(PSObject))]
@@ -1126,8 +1453,7 @@ namespace Site24x7.Cmdlets
         public string ParameterId { get; set; }
 
         protected override string ResourceId => ParameterId;
-        protected override string ResourcePath => Endpoints.GlobalParameters;
-        protected override string ResourceLabel => "global parameter";
+        private protected override ResourceInfo Resource => Resources.GlobalParameter;
         protected override string NameProperty => "name";
     }
 
@@ -1136,14 +1462,15 @@ namespace Site24x7.Cmdlets
     {
         /// <summary>The global parameter's name.</summary>
         [Parameter]
-        public string ParameterName { get; set; }
+        [ValidateNotNullOrEmpty]
+        public virtual string ParameterName { get; set; }
 
         /// <summary>The parameter's value.</summary>
         [Parameter]
+        [ValidateNotNullOrEmpty]
         public string Value { get; set; }
 
-        protected override string ResourcePath => Endpoints.GlobalParameters;
-        protected override string ResourceLabel => "global parameter";
+        private protected override ResourceInfo Resource => Resources.GlobalParameter;
 
         protected override void BuildBody(IDictionary body)
         {
@@ -1154,15 +1481,21 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Creates a global parameter. Fields without a parameter can be passed with -Property.</para>
+    /// <para type="description">The API path this cmdlet calls (global_params) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.New, "Site24x7GlobalParameter", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7GlobalParameterCommand : Site24x7GlobalParameterWriteCmdlet
     {
+        /// <summary>The global parameter's name.</summary>
+        [Parameter(Mandatory = true, Position = 0)]
+        [ValidateNotNullOrEmpty]
+        public override string ParameterName { get; set; }
     }
 
     /// <summary>
     /// <para type="synopsis">Updates a global parameter. Only the settings you pass are sent.</para>
+    /// <para type="description">The API path this cmdlet calls (global_params) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Set, "Site24x7GlobalParameter", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
@@ -1179,6 +1512,7 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Deletes a global parameter.</para>
+    /// <para type="description">The API path this cmdlet calls (global_params) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Remove, "Site24x7GlobalParameter", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7GlobalParameterCommand : RemoveResourceCmdlet
@@ -1190,8 +1524,7 @@ namespace Site24x7.Cmdlets
         public string ParameterId { get; set; }
 
         protected override string ResourceId => ParameterId;
-        protected override string ResourcePath => Endpoints.GlobalParameters;
-        protected override string ResourceLabel => "global parameter";
+        private protected override ResourceInfo Resource => Resources.GlobalParameter;
     }
 
     #endregion
@@ -1212,8 +1545,7 @@ namespace Site24x7.Cmdlets
         public string ActionId { get; set; }
 
         protected override string ResourceId => ActionId;
-        protected override string ResourcePath => Endpoints.ITAutomation;
-        protected override string ResourceLabel => "IT automation";
+        private protected override ResourceInfo Resource => Resources.ITAutomation;
         protected override string NameProperty => "action_name";
     }
 
@@ -1222,6 +1554,7 @@ namespace Site24x7.Cmdlets
     {
         /// <summary>The IT automation's name.</summary>
         [Parameter]
+        [ValidateNotNullOrEmpty]
         public virtual string ActionName { get; set; }
 
         /// <summary>The automation type constant, for example 1 for URL action.</summary>
@@ -1230,18 +1563,19 @@ namespace Site24x7.Cmdlets
 
         /// <summary>The URL the action calls.</summary>
         [Parameter]
+        [ValidateNotNullOrEmpty]
         public string ActionUrl { get; set; }
 
         /// <summary>P = POST, G = GET.</summary>
         [Parameter]
+        [ValidateNotNullOrEmpty]
         public string ActionMethod { get; set; }
 
         /// <summary>Seconds to wait for the action to finish.</summary>
         [Parameter]
         public int ActionTimeout { get; set; }
 
-        protected override string ResourcePath => Endpoints.ITAutomation;
-        protected override string ResourceLabel => "IT automation";
+        private protected override ResourceInfo Resource => Resources.ITAutomation;
 
         protected override void BuildBody(IDictionary body)
         {
@@ -1295,8 +1629,7 @@ namespace Site24x7.Cmdlets
         public string ActionId { get; set; }
 
         protected override string ResourceId => ActionId;
-        protected override string ResourcePath => Endpoints.ITAutomation;
-        protected override string ResourceLabel => "IT automation";
+        private protected override ResourceInfo Resource => Resources.ITAutomation;
     }
 
     #endregion
@@ -1305,6 +1638,7 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Gets configuration rules.</para>
+    /// <para type="description">The API path this cmdlet calls (config_rules) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Get, "Site24x7ConfigurationRule", DefaultParameterSetName = ParameterSets.List)]
     [OutputType(typeof(PSObject))]
@@ -1317,16 +1651,14 @@ namespace Site24x7.Cmdlets
         public string RuleId { get; set; }
 
         protected override string ResourceId => RuleId;
-        protected override string ResourcePath => Endpoints.ConfigurationRules;
-        protected override string ResourceLabel => "configuration rule";
+        private protected override ResourceInfo Resource => Resources.ConfigurationRule;
         protected override string NameProperty => "rule_name";
     }
 
     /// <summary>Settings shared by New-Site24x7ConfigurationRule and Set-Site24x7ConfigurationRule.</summary>
     public abstract class Site24x7ConfigurationRuleWriteCmdlet : WriteResourceCmdlet
     {
-        protected override string ResourcePath => Endpoints.ConfigurationRules;
-        protected override string ResourceLabel => "configuration rule";
+        private protected override ResourceInfo Resource => Resources.ConfigurationRule;
 
         protected override void BuildBody(IDictionary body)
         {
@@ -1334,16 +1666,22 @@ namespace Site24x7.Cmdlets
     }
 
     /// <summary>
-    /// <para type="synopsis">Creates a configuration rule. Fields without a parameter can be passed with -Property.</para>
+    /// <para type="synopsis">Creates a configuration rule. Pass its fields with -Property, using the API's field names.</para>
+    /// <para type="description">The API path this cmdlet calls (config_rules) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.New, "Site24x7ConfigurationRule", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7ConfigurationRuleCommand : Site24x7ConfigurationRuleWriteCmdlet
     {
+        /// <summary>The configuration rule's fields, as a hashtable of the API's field names and values.</summary>
+        [Parameter(Mandatory = true, Position = 0)]
+        [ValidateNotNull]
+        public override Hashtable Property { get; set; }
     }
 
     /// <summary>
     /// <para type="synopsis">Updates a configuration rule. Only the settings you pass are sent.</para>
+    /// <para type="description">The API path this cmdlet calls (config_rules) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Set, "Site24x7ConfigurationRule", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
@@ -1360,6 +1698,7 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Deletes a configuration rule.</para>
+    /// <para type="description">The API path this cmdlet calls (config_rules) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Remove, "Site24x7ConfigurationRule", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7ConfigurationRuleCommand : RemoveResourceCmdlet
@@ -1371,8 +1710,7 @@ namespace Site24x7.Cmdlets
         public string RuleId { get; set; }
 
         protected override string ResourceId => RuleId;
-        protected override string ResourcePath => Endpoints.ConfigurationRules;
-        protected override string ResourceLabel => "configuration rule";
+        private protected override ResourceInfo Resource => Resources.ConfigurationRule;
     }
 
     #endregion
@@ -1381,6 +1719,7 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Gets scheduled reports.</para>
+    /// <para type="description">The API path this cmdlet calls (schedule_reports) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Get, "Site24x7ScheduledReport", DefaultParameterSetName = ParameterSets.List)]
     [OutputType(typeof(PSObject))]
@@ -1393,8 +1732,7 @@ namespace Site24x7.Cmdlets
         public string ReportId { get; set; }
 
         protected override string ResourceId => ReportId;
-        protected override string ResourcePath => Endpoints.ScheduledReports;
-        protected override string ResourceLabel => "scheduled report";
+        private protected override ResourceInfo Resource => Resources.ScheduledReport;
         protected override string NameProperty => "display_name";
     }
 
@@ -1403,10 +1741,10 @@ namespace Site24x7.Cmdlets
     {
         /// <summary>The scheduled report's name.</summary>
         [Parameter]
-        public string DisplayName { get; set; }
+        [ValidateNotNullOrEmpty]
+        public virtual string DisplayName { get; set; }
 
-        protected override string ResourcePath => Endpoints.ScheduledReports;
-        protected override string ResourceLabel => "scheduled report";
+        private protected override ResourceInfo Resource => Resources.ScheduledReport;
 
         protected override void BuildBody(IDictionary body)
         {
@@ -1416,15 +1754,21 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Creates a scheduled report. Fields without a parameter can be passed with -Property.</para>
+    /// <para type="description">The API path this cmdlet calls (schedule_reports) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.New, "Site24x7ScheduledReport", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7ScheduledReportCommand : Site24x7ScheduledReportWriteCmdlet
     {
+        /// <summary>The scheduled report's name.</summary>
+        [Parameter(Mandatory = true, Position = 0)]
+        [ValidateNotNullOrEmpty]
+        public override string DisplayName { get; set; }
     }
 
     /// <summary>
     /// <para type="synopsis">Updates a scheduled report. Only the settings you pass are sent.</para>
+    /// <para type="description">The API path this cmdlet calls (schedule_reports) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Set, "Site24x7ScheduledReport", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
@@ -1441,6 +1785,7 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Deletes a scheduled report.</para>
+    /// <para type="description">The API path this cmdlet calls (schedule_reports) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Remove, "Site24x7ScheduledReport", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7ScheduledReportCommand : RemoveResourceCmdlet
@@ -1452,8 +1797,7 @@ namespace Site24x7.Cmdlets
         public string ReportId { get; set; }
 
         protected override string ResourceId => ReportId;
-        protected override string ResourcePath => Endpoints.ScheduledReports;
-        protected override string ResourceLabel => "scheduled report";
+        private protected override ResourceInfo Resource => Resources.ScheduledReport;
     }
 
     #endregion
@@ -1462,6 +1806,7 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Gets SLA settings.</para>
+    /// <para type="description">The API path this cmdlet calls (sla_settings) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Get, "Site24x7SlaSetting", DefaultParameterSetName = ParameterSets.List)]
     [OutputType(typeof(PSObject))]
@@ -1474,8 +1819,7 @@ namespace Site24x7.Cmdlets
         public string SlaId { get; set; }
 
         protected override string ResourceId => SlaId;
-        protected override string ResourcePath => Endpoints.SlaSettings;
-        protected override string ResourceLabel => "SLA setting";
+        private protected override ResourceInfo Resource => Resources.SlaSetting;
         protected override string NameProperty => "display_name";
     }
 
@@ -1484,10 +1828,10 @@ namespace Site24x7.Cmdlets
     {
         /// <summary>The SLA setting's name.</summary>
         [Parameter]
-        public string DisplayName { get; set; }
+        [ValidateNotNullOrEmpty]
+        public virtual string DisplayName { get; set; }
 
-        protected override string ResourcePath => Endpoints.SlaSettings;
-        protected override string ResourceLabel => "SLA setting";
+        private protected override ResourceInfo Resource => Resources.SlaSetting;
 
         protected override void BuildBody(IDictionary body)
         {
@@ -1497,15 +1841,21 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Creates a SLA setting. Fields without a parameter can be passed with -Property.</para>
+    /// <para type="description">The API path this cmdlet calls (sla_settings) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.New, "Site24x7SlaSetting", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7SlaSettingCommand : Site24x7SlaSettingWriteCmdlet
     {
+        /// <summary>The SLA setting's name.</summary>
+        [Parameter(Mandatory = true, Position = 0)]
+        [ValidateNotNullOrEmpty]
+        public override string DisplayName { get; set; }
     }
 
     /// <summary>
     /// <para type="synopsis">Updates a SLA setting. Only the settings you pass are sent.</para>
+    /// <para type="description">The API path this cmdlet calls (sla_settings) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Set, "Site24x7SlaSetting", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
@@ -1522,6 +1872,7 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Deletes a SLA setting.</para>
+    /// <para type="description">The API path this cmdlet calls (sla_settings) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Remove, "Site24x7SlaSetting", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7SlaSettingCommand : RemoveResourceCmdlet
@@ -1533,8 +1884,7 @@ namespace Site24x7.Cmdlets
         public string SlaId { get; set; }
 
         protected override string ResourceId => SlaId;
-        protected override string ResourcePath => Endpoints.SlaSettings;
-        protected override string ResourceLabel => "SLA setting";
+        private protected override ResourceInfo Resource => Resources.SlaSetting;
     }
 
     #endregion
@@ -1543,6 +1893,7 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Gets status pages.</para>
+    /// <para type="description">The API path this cmdlet calls (statuspages) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Get, "Site24x7StatusPage", DefaultParameterSetName = ParameterSets.List)]
     [OutputType(typeof(PSObject))]
@@ -1555,8 +1906,7 @@ namespace Site24x7.Cmdlets
         public string StatusPageId { get; set; }
 
         protected override string ResourceId => StatusPageId;
-        protected override string ResourcePath => Endpoints.StatusPages;
-        protected override string ResourceLabel => "status page";
+        private protected override ResourceInfo Resource => Resources.StatusPage;
         protected override string NameProperty => "display_name";
     }
 
@@ -1565,10 +1915,10 @@ namespace Site24x7.Cmdlets
     {
         /// <summary>The status page's name.</summary>
         [Parameter]
-        public string DisplayName { get; set; }
+        [ValidateNotNullOrEmpty]
+        public virtual string DisplayName { get; set; }
 
-        protected override string ResourcePath => Endpoints.StatusPages;
-        protected override string ResourceLabel => "status page";
+        private protected override ResourceInfo Resource => Resources.StatusPage;
 
         protected override void BuildBody(IDictionary body)
         {
@@ -1578,15 +1928,21 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Creates a status page. Fields without a parameter can be passed with -Property.</para>
+    /// <para type="description">The API path this cmdlet calls (statuspages) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.New, "Site24x7StatusPage", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
     public sealed class NewSite24x7StatusPageCommand : Site24x7StatusPageWriteCmdlet
     {
+        /// <summary>The status page's name.</summary>
+        [Parameter(Mandatory = true, Position = 0)]
+        [ValidateNotNullOrEmpty]
+        public override string DisplayName { get; set; }
     }
 
     /// <summary>
     /// <para type="synopsis">Updates a status page. Only the settings you pass are sent.</para>
+    /// <para type="description">The API path this cmdlet calls (statuspages) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Set, "Site24x7StatusPage", SupportsShouldProcess = true)]
     [OutputType(typeof(PSObject))]
@@ -1603,6 +1959,7 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Deletes a status page.</para>
+    /// <para type="description">The API path this cmdlet calls (statuspages) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Remove, "Site24x7StatusPage", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
     public sealed class RemoveSite24x7StatusPageCommand : RemoveResourceCmdlet
@@ -1614,48 +1971,7 @@ namespace Site24x7.Cmdlets
         public string StatusPageId { get; set; }
 
         protected override string ResourceId => StatusPageId;
-        protected override string ResourcePath => Endpoints.StatusPages;
-        protected override string ResourceLabel => "status page";
-    }
-
-    #endregion
-
-    #region ThirdPartyIntegration
-
-    /// <summary>
-    /// <para type="synopsis">Gets third-party integrations (Slack, PagerDuty, webhooks and others).</para>
-    /// </summary>
-    [Cmdlet(VerbsCommon.Get, "Site24x7ThirdPartyIntegration", DefaultParameterSetName = ParameterSets.List)]
-    [OutputType(typeof(PSObject))]
-    public sealed class GetSite24x7ThirdPartyIntegrationCommand : GetResourceCmdlet
-    {
-        /// <summary>The third-party integration's id.</summary>
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = ParameterSets.ById, ValueFromPipelineByPropertyName = true)]
-        [Alias("service_id")]
-        [ValidateNotNullOrEmpty]
-        public string ServiceId { get; set; }
-
-        protected override string ResourceId => ServiceId;
-        protected override string ResourcePath => Endpoints.ThirdPartyServices;
-        protected override string ResourceLabel => "third-party integration";
-        protected override string NameProperty => "name";
-    }
-
-    /// <summary>
-    /// <para type="synopsis">Deletes a third-party integration.</para>
-    /// </summary>
-    [Cmdlet(VerbsCommon.Remove, "Site24x7ThirdPartyIntegration", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
-    public sealed class RemoveSite24x7ThirdPartyIntegrationCommand : RemoveResourceCmdlet
-    {
-        /// <summary>The third-party integration's id.</summary>
-        [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-        [Alias("service_id")]
-        [ValidateNotNullOrEmpty]
-        public string ServiceId { get; set; }
-
-        protected override string ResourceId => ServiceId;
-        protected override string ResourcePath => Endpoints.ThirdPartyServices;
-        protected override string ResourceLabel => "third-party integration";
+        private protected override ResourceInfo Resource => Resources.StatusPage;
     }
 
     #endregion
@@ -1664,6 +1980,7 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Gets on-premise pollers.</para>
+    /// <para type="description">The API path this cmdlet calls (on_premise_poller) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Get, "Site24x7OnPremisePoller", DefaultParameterSetName = ParameterSets.List)]
     [OutputType(typeof(PSObject))]
@@ -1676,8 +1993,7 @@ namespace Site24x7.Cmdlets
         public string PollerId { get; set; }
 
         protected override string ResourceId => PollerId;
-        protected override string ResourcePath => Endpoints.OnPremisePollers;
-        protected override string ResourceLabel => "on-premise poller";
+        private protected override ResourceInfo Resource => Resources.OnPremisePoller;
         protected override string NameProperty => "display_name";
     }
 
@@ -1687,13 +2003,13 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Gets audit log entries (pass date filters with -Query).</para>
+    /// <para type="description">The API path this cmdlet calls (audit_logs) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Get, "Site24x7AuditLog", DefaultParameterSetName = ParameterSets.List)]
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7AuditLogCommand : GetResourceCmdlet
     {
-        protected override string ResourcePath => Endpoints.AuditLogs;
-        protected override string ResourceLabel => "audit log";
+        private protected override ResourceInfo Resource => Resources.AuditLog;
         protected override string NameProperty => "display_name";
     }
 
@@ -1703,13 +2019,13 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Gets IT automation run logs (pass date filters with -Query).</para>
+    /// <para type="description">The API path this cmdlet calls (automation_logs) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Get, "Site24x7ITAutomationLog", DefaultParameterSetName = ParameterSets.List)]
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7ITAutomationLogCommand : GetResourceCmdlet
     {
-        protected override string ResourcePath => Endpoints.ITAutomationLogs;
-        protected override string ResourceLabel => "IT automation log";
+        private protected override ResourceInfo Resource => Resources.ITAutomationLog;
         protected override string NameProperty => "action_name";
     }
 
@@ -1719,13 +2035,13 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Gets alert logs (pass date filters with -Query).</para>
+    /// <para type="description">The API path this cmdlet calls (alert_logs) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Get, "Site24x7AlertLog", DefaultParameterSetName = ParameterSets.List)]
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7AlertLogCommand : GetResourceCmdlet
     {
-        protected override string ResourcePath => Endpoints.AlertLogs;
-        protected override string ResourceLabel => "alert log";
+        private protected override ResourceInfo Resource => Resources.AlertLog;
         protected override string NameProperty => "display_name";
     }
 
@@ -1735,13 +2051,13 @@ namespace Site24x7.Cmdlets
 
     /// <summary>
     /// <para type="synopsis">Gets open alarms (monitors that are down, in trouble or critical).</para>
+    /// <para type="description">The API path this cmdlet calls (alarms) has not been checked against a live Site24x7 account yet. tools/Test-Site24x7Endpoints.ps1 in the module's repository checks it.</para>
     /// </summary>
     [Cmdlet(VerbsCommon.Get, "Site24x7Alarm", DefaultParameterSetName = ParameterSets.List)]
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7AlarmCommand : GetResourceCmdlet
     {
-        protected override string ResourcePath => Endpoints.Alarms;
-        protected override string ResourceLabel => "alarm";
+        private protected override ResourceInfo Resource => Resources.Alarm;
         protected override string NameProperty => "display_name";
     }
 
@@ -1756,8 +2072,7 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7LocationTemplateCommand : GetResourceCmdlet
     {
-        protected override string ResourcePath => Endpoints.LocationTemplate;
-        protected override string ResourceLabel => "location template";
+        private protected override ResourceInfo Resource => Resources.LocationTemplate;
         protected override string NameProperty => "display_name";
     }
 
@@ -1772,8 +2087,7 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7MspCustomerCommand : GetResourceCmdlet
     {
-        protected override string ResourcePath => Endpoints.MspCustomers;
-        protected override string ResourceLabel => "MSP customer";
+        private protected override ResourceInfo Resource => Resources.MspCustomer;
         protected override string NameProperty => "name";
     }
 
@@ -1788,8 +2102,7 @@ namespace Site24x7.Cmdlets
     [OutputType(typeof(PSObject))]
     public sealed class GetSite24x7BusinessUnitCommand : GetResourceCmdlet
     {
-        protected override string ResourcePath => Endpoints.BusinessUnits;
-        protected override string ResourceLabel => "business unit";
+        private protected override ResourceInfo Resource => Resources.BusinessUnit;
         protected override string NameProperty => "name";
     }
 

@@ -2,7 +2,7 @@
 .SYNOPSIS
     Builds the Site24x7 module into ./out/Site24x7.
 .DESCRIPTION
-    Requires the .NET SDK (6.0 or later). The compiled module targets netstandard2.0, so the same
+    Requires the .NET SDK (8.0 or later; see global.json). The compiled module targets netstandard2.0, so the same
     output loads in Windows PowerShell 5.1 (.NET Framework 4.7.2 or later) and PowerShell 7+.
 
     The build also:
@@ -15,7 +15,8 @@
     Import-Module ./out/Site24x7/Site24x7.psd1
 .EXAMPLE
     ./build.ps1 -Test
-    Builds, then runs the Pester tests in ./tests.
+    Builds, then runs the Pester tests in ./tests. Needs Pester 5.7.1, the version CI uses:
+    Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser
 #>
 [CmdletBinding()]
 param(
@@ -48,14 +49,14 @@ if ([System.IO.Path]::GetFileNameWithoutExtension($exe) -notin 'pwsh', 'powershe
     -ModulePath (Join-Path $out 'Site24x7.dll') -DocPath (Join-Path $publish 'Site24x7.xml') -OutFile (Join-Path $out 'Site24x7.dll-Help.xml')
 if ($LASTEXITCODE -ne 0) { throw "Building help failed with exit code $LASTEXITCODE" }
 
-$listing = & $exe -NoProfile -NonInteractive -Command {
-    param($dll)
-    $m = Import-Module $dll -PassThru
-    [pscustomobject]@{
-        Cmdlets = @($m.ExportedCmdlets.Keys | Sort-Object)
-        Aliases = @($m.ExportedAliases.Keys | Sort-Object)
-    } | ConvertTo-Json -Compress
-} -args (Join-Path $out 'Site24x7.dll') | ConvertFrom-Json
+$listDll = Join-Path $out 'Site24x7.dll'
+$listCommand = "`$m = Import-Module '$($listDll.Replace("'", "''"))' -PassThru; " +
+    "[pscustomobject]@{ Cmdlets = @(`$m.ExportedCmdlets.Keys | Sort-Object); Aliases = @(`$m.ExportedAliases.Keys | Sort-Object) } | ConvertTo-Json -Compress"
+$listing = & $exe -NoProfile -NonInteractive -Command $listCommand | ConvertFrom-Json
+# Never write a manifest that exports nothing because the listing failed.
+if ($LASTEXITCODE -ne 0 -or -not $listing -or @($listing.Cmdlets).Count -eq 0) {
+    throw "Could not list the module's cmdlets from $listDll; module/Site24x7.psd1 was not changed."
+}
 
 # The version lives only in the project file.
 [xml] $csproj = Get-Content $project -Raw
@@ -78,7 +79,7 @@ Copy-Item $manifestPath $out
 Write-Host "Built $out (version $version, $($listing.Cmdlets.Count) cmdlets)"
 
 if ($Test) {
-    Import-Module Pester -MinimumVersion 5.0 -MaximumVersion 5.99.99 -ErrorAction Stop
+    Import-Module Pester -RequiredVersion 5.7.1 -ErrorAction Stop
     $result = Invoke-Pester -Path (Join-Path $root 'tests') -Output Detailed -PassThru
     if ($result.FailedCount -gt 0) { throw "$($result.FailedCount) test(s) failed." }
 }

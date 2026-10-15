@@ -67,7 +67,7 @@ Copy-Item $manifestPath $out
 Write-Host "Built $out ($($listing.Cmdlets.Count) cmdlets, $($listing.Aliases.Count) aliases)"
 
 if ($Test) {
-    Import-Module Pester -MinimumVersion 5.0 -ErrorAction Stop
+    Import-Module Pester -MinimumVersion 5.0 -MaximumVersion 5.99.99 -ErrorAction Stop
     $result = Invoke-Pester -Path (Join-Path $root 'tests') -Output Detailed -PassThru
     if ($result.FailedCount -gt 0) { throw "$($result.FailedCount) test(s) failed." }
 }

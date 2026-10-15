@@ -327,7 +327,8 @@ Describe 'Writing' {
     }
 
     It 'round-trips awkward text through JSON' {
-        $text = "quote `" backslash \ tab `t newline `n unicode é ✓"
+        # Non-ASCII characters are built from code points so the file stays ASCII for Windows PowerShell 5.1.
+        $text = "quote `" backslash \ tab `t newline `n unicode " + [char]0x00E9 + [char]0x2713
         New-Site24x7Tag -TagName $text | Out-Null
         (Body (Get-MockRequest POST /api/tags)).tag_name | Should -Be $text
     }

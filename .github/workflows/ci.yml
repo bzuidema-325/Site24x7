@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: PowerShell 7 (Linux)
+            os: ubuntu-latest
+            shell: pwsh
+          - name: PowerShell 7 (Windows)
+            os: windows-latest
+            shell: pwsh
+          - name: Windows PowerShell 5.1
+            os: windows-latest
+            shell: powershell
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install Pester
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module Pester -MinimumVersion 5.5.0 -Scope CurrentUser -Force -SkipPublisherCheck
+
+      - name: Build and test
+        run: ./build.ps1 -Test
+
+      - name: Check generated cmdlets are up to date
+        if: matrix.shell == 'pwsh' && runner.os == 'Linux'
+        run: |
+          ./tools/Build-ResourceCmdlets.ps1
+          git diff --exit-code -- src/Site24x7/Cmdlets/Generated module/Site24x7.psd1
+
+      - uses: actions/upload-artifact@v4
+        if: matrix.shell == 'pwsh' && runner.os == 'Windows'
+        with:
+          name: Site24x7-module
+          path: out/Site24x7

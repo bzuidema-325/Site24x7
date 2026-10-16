@@ -1,0 +1,60 @@
+name: CI
+
+# Manual only: the project does not spend GitHub Actions minutes automatically. Test locally with
+# ./build.ps1 -Test, and start this from the Actions tab (Run workflow) when a CI run is wanted.
+on:
+  workflow_dispatch:
+
+# The workflow only reads the repository; nothing it runs gets write access.
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: PowerShell 7 (Linux)
+            os: ubuntu-latest
+            shell: pwsh
+          - name: PowerShell 7 (Windows)
+            os: windows-latest
+            shell: pwsh
+          - name: Windows PowerShell 5.1
+            os: windows-latest
+            shell: powershell
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+    steps:
+      # Actions are pinned to commit SHAs; the comment names the release.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install Pester
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser -Force -SkipPublisherCheck
+
+      - name: Build and test
+        run: ./build.ps1 -Test
+
+      - name: Check generated files are up to date
+        if: matrix.shell == 'pwsh' && runner.os == 'Linux'
+        run: |
+          ./tools/Build-ResourceCmdlets.ps1
+          git diff --exit-code -- src/Site24x7/Cmdlets/Generated module/Site24x7.psd1
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: matrix.shell == 'pwsh' && runner.os == 'Windows'
+        with:
+          name: Site24x7-module
+          path: out/Site24x7

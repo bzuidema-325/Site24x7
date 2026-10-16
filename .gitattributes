@@ -1,0 +1,10 @@
+# The generator and the build write these with LF; keep them LF everywhere so CI's
+# "is the generated output up to date" check does not trip on line endings.
+*.cs text eol=lf
+*.ps1 text eol=lf
+*.psm1 text eol=lf
+*.psd1 text eol=lf
+*.ps1xml text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.json text eol=lf

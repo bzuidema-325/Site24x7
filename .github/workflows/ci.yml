@@ -1,9 +1,9 @@
 name: CI
 
+# Manual only: the project does not spend GitHub Actions minutes automatically. Test locally with
+# ./build.ps1 -Test, and start this from the Actions tab (Run workflow) when a CI run is wanted.
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 # The workflow only reads the repository; nothing it runs gets write access.
 permissions:

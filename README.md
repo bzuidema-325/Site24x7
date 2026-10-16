@@ -23,8 +23,7 @@ Import-Module ./out/Site24x7/Site24x7.psd1
 ```
 
 To install it for your user, copy `out/Site24x7` into a folder on `$env:PSModulePath`
-(for example `~/Documents/PowerShell/Modules/Site24x7`). Every CI run also uploads the built
-module as a downloadable artifact.
+(for example `~/Documents/PowerShell/Modules/Site24x7`).
 
 ## Sign in
 
@@ -215,6 +214,8 @@ tools/                   The CRUD generator, the help builder, and the endpoint 
 
 - `./build.ps1` builds into `out/Site24x7`, writes Get-Help from the doc comments, and refreshes the
   cmdlet list and version in the manifest. The version is set only in `Site24x7.csproj`.
+- CI does not run automatically. Test locally with `./build.ps1 -Test`; the GitHub Actions
+  workflow can still be started by hand from the Actions tab, and uploads the built module.
 - `./build.ps1 -Test` also runs the tests (needs Pester 5: `Install-Module Pester -RequiredVersion 5.7.1`).
   Every generated area is tested from the generator's table, so a new area is covered automatically;
   hand-written cmdlets are listed in the `$handWritten` table in the tests, and a test fails when
